@@ -1,0 +1,348 @@
+{
+  "generated_by": "src/validate.py",
+  "dataset_note": "null_model/stability/ablation/synthetic_recovery use the synthetic demo export; real-data aggregates are under 'real'.",
+  "snap": {
+    "n": 10,
+    "mean": {
+      "f1_circle_to_comm": 0.3591,
+      "f1_balanced": 0.4547,
+      "nmi_single_circle": 0.6818
+    },
+    "per_ego": [
+      {
+        "ego": 0,
+        "n_alters": 342,
+        "n_edges": 2519,
+        "n_circles": 24,
+        "n_communities": 13,
+        "f1_circle_to_comm": 0.2496,
+        "f1_balanced": 0.295,
+        "nmi_single_circle": 0.4243,
+        "n_single_circle": 247
+      },
+      {
+        "ego": 107,
+        "n_alters": 1035,
+        "n_edges": 26749,
+        "n_circles": 9,
+        "n_communities": 8,
+        "f1_circle_to_comm": 0.3246,
+        "f1_balanced": 0.3486,
+        "nmi_single_circle": 0.597,
+        "n_single_circle": 462
+      },
+      {
+        "ego": 348,
+        "n_alters": 226,
+        "n_edges": 3192,
+        "n_circles": 14,
+        "n_communities": 8,
+        "f1_circle_to_comm": 0.4857,
+        "f1_balanced": 0.5365,
+        "nmi_single_circle": 0.5455,
+        "n_single_circle": 34
+      },
+      {
+        "ego": 414,
+        "n_alters": 155,
+        "n_edges": 1693,
+        "n_circles": 7,
+        "n_communities": 5,
+        "f1_circle_to_comm": 0.5267,
+        "f1_balanced": 0.5604,
+        "nmi_single_circle": 0.8576,
+        "n_single_circle": 102
+      },
+      {
+        "ego": 686,
+        "n_alters": 170,
+        "n_edges": 1656,
+        "n_circles": 14,
+        "n_communities": 6,
+        "f1_circle_to_comm": 0.4587,
+        "f1_balanced": 0.4893,
+        "nmi_single_circle": 0.5012,
+        "n_single_circle": 34
+      },
+      {
+        "ego": 698,
+        "n_alters": 64,
+        "n_edges": 270,
+        "n_circles": 13,
+        "n_communities": 5,
+        "f1_circle_to_comm": 0.465,
+        "f1_balanced": 0.5716,
+        "nmi_single_circle": 0.8486,
+        "n_single_circle": 30
+      },
+      {
+        "ego": 1684,
+        "n_alters": 792,
+        "n_edges": 14024,
+        "n_circles": 17,
+        "n_communities": 11,
+        "f1_circle_to_comm": 0.4592,
+        "f1_balanced": 0.5719,
+        "nmi_single_circle": 0.7289,
+        "n_single_circle": 763
+      },
+      {
+        "ego": 1912,
+        "n_alters": 751,
+        "n_edges": 30025,
+        "n_circles": 46,
+        "n_communities": 6,
+        "f1_circle_to_comm": 0.1693,
+        "f1_balanced": 0.4797,
+        "nmi_single_circle": 0.7216,
+        "n_single_circle": 449
+      },
+      {
+        "ego": 3437,
+        "n_alters": 534,
+        "n_edges": 4813,
+        "n_circles": 32,
+        "n_communities": 11,
+        "f1_circle_to_comm": 0.1055,
+        "f1_balanced": 0.1536,
+        "nmi_single_circle": 0.9286,
+        "n_single_circle": 31
+      },
+      {
+        "ego": 3980,
+        "n_alters": 58,
+        "n_edges": 146,
+        "n_circles": 17,
+        "n_communities": 6,
+        "f1_circle_to_comm": 0.3467,
+        "f1_balanced": 0.5404,
+        "nmi_single_circle": 0.6651,
+        "n_single_circle": 58
+      }
+    ],
+    "note": "Leiden (modularity, seed 0) on SNAP ego-Facebook alter graphs vs user-drawn circles. Shows the algorithm finds circles on real friendship edges; it does NOT validate inference from LinkedIn exports, which have no alter-alter edges. Balanced F1 averages circle->community and community->circle best match (singleton communities excluded from the latter)."
+  },
+  "null_model": {
+    "weight_shuffle": {
+      "n": 100,
+      "q_leiden": 0.5897,
+      "null_mean": 0.6175,
+      "null_sd": 0.0106,
+      "z": -2.6264,
+      "note": "Leiden weighted Q vs the same graph with edge weights shuffled. Tests whether the link-type weights carry structure beyond graph topology."
+    },
+    "n": 100,
+    "n_nodes": 300,
+    "n_edges": 6914,
+    "density": 0.1542,
+    "q_weighted": 0.5897,
+    "q_unweighted_same_partition": 0.4941,
+    "q_unweighted_leiden": 0.617,
+    "null_mean": 0.1248,
+    "null_sd": 0.0027,
+    "z": 183.3376,
+    "note": "Leiden Q on the unweighted projection vs Leiden on 100 configuration-model graphs (same degrees, multi-edges allowed). Weighted null skipped, so this ignores edge weights. Shared-company cliques are trivially modular, so a large z says the structure is not degree noise, not that clusters are right; on a dense projection (era/burst near-cliques) unweighted Q is near zero and the test says little."
+  },
+  "stability": {
+    "n": 45,
+    "n_seeds": 10,
+    "ari_mean": 0.8187,
+    "ari_min": 0.6116,
+    "n_clusters_range": [
+      8,
+      8
+    ],
+    "note": "Pairwise ARI between Leiden runs with seeds 0-9 on the default projection. Shows the partition does not hinge on the seed; says nothing about whether it is correct."
+  },
+  "ablation": {
+    "n": 300,
+    "sets": {
+      "co": {
+        "weights": {
+          "co": 1.0
+        },
+        "n_clusters": 45,
+        "share_unplaced": 0.2967,
+        "agreement": {
+          "ari": 0.4024,
+          "n": 220
+        }
+      },
+      "co+ego": {
+        "weights": {
+          "co": 1.0,
+          "ego": 0.8
+        },
+        "n_clusters": 45,
+        "share_unplaced": 0.2967,
+        "agreement": {
+          "ari": 0.4024,
+          "n": 220
+        }
+      },
+      "co+ego+era": {
+        "weights": {
+          "co": 1.0,
+          "ego": 0.8,
+          "era": 0.3
+        },
+        "n_clusters": 10,
+        "share_unplaced": 0.0633,
+        "agreement": {
+          "ari": 0.333,
+          "n": 220
+        }
+      },
+      "co+ego+era+burst (default)": {
+        "weights": {
+          "co": 1.0,
+          "ego": 0.8,
+          "era": 0.3,
+          "burst": 1.0
+        },
+        "n_clusters": 8,
+        "share_unplaced": 0.0367,
+        "agreement": {
+          "ari": 0.6286,
+          "n": 220
+        }
+      },
+      "co+ego+era+burst+role0.2": {
+        "weights": {
+          "co": 1.0,
+          "ego": 0.8,
+          "era": 0.3,
+          "burst": 1.0,
+          "role": 0.2
+        },
+        "n_clusters": 7,
+        "share_unplaced": 0.01,
+        "agreement": {
+          "ari": 0.3659,
+          "n": 220
+        }
+      }
+    },
+    "note": "Each weight set clustered with seed 0. Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
+  },
+  "synthetic_recovery": {
+    "n": 220,
+    "n_total": 300,
+    "ari": 0.6286,
+    "nmi": 0.7093,
+    "ari_seed_mean": 0.5725,
+    "ari_seed_range": [
+      0.4415,
+      0.6286
+    ],
+    "n_seeds": 10,
+    "note": "Default weights on demo/data vs planted circles in demo/truth.csv, noise rows excluded. A sanity check on data this project generated (it knows the planted signals), not a validation."
+  },
+  "hand_labels": {
+    "labels": "pending",
+    "pairs": "pending"
+  },
+  "testers": "pending",
+  "real": {
+    "n": 325,
+    "n_edges": 36163,
+    "n_clusters": 5,
+    "share_unplaced": 0.0338,
+    "cluster_sizes": [
+      234,
+      50,
+      14,
+      14,
+      2
+    ],
+    "null_model": {
+      "weight_shuffle": {
+        "n": 100,
+        "q_leiden": 0.2248,
+        "null_mean": 0.0801,
+        "null_sd": 0.0011,
+        "z": 132.4613,
+        "note": "Leiden weighted Q vs the same graph with edge weights shuffled. Tests whether the link-type weights carry structure beyond graph topology."
+      },
+      "n": 100,
+      "n_nodes": 325,
+      "n_edges": 36163,
+      "density": 0.6869,
+      "q_weighted": 0.2248,
+      "q_unweighted_same_partition": 0.0299,
+      "q_unweighted_leiden": 0.034,
+      "null_mean": 0.0551,
+      "null_sd": 0.0011,
+      "z": -19.268,
+      "note": "Leiden Q on the unweighted projection vs Leiden on 100 configuration-model graphs (same degrees, multi-edges allowed). Weighted null skipped, so this ignores edge weights. Shared-company cliques are trivially modular, so a large z says the structure is not degree noise, not that clusters are right; on a dense projection (era/burst near-cliques) unweighted Q is near zero and the test says little."
+    },
+    "stability": {
+      "n": 45,
+      "n_seeds": 10,
+      "ari_mean": 0.9358,
+      "ari_min": 0.87,
+      "n_clusters_range": [
+        5,
+        6
+      ],
+      "note": "Pairwise ARI between Leiden runs with seeds 0-9 on the default projection. Shows the partition does not hinge on the seed; says nothing about whether it is correct."
+    },
+    "ablation": {
+      "n": 325,
+      "sets": {
+        "co": {
+          "weights": {
+            "co": 1.0
+          },
+          "n_clusters": 16,
+          "share_unplaced": 0.7477,
+          "agreement": "pending"
+        },
+        "co+ego": {
+          "weights": {
+            "co": 1.0,
+            "ego": 0.8
+          },
+          "n_clusters": 16,
+          "share_unplaced": 0.7477,
+          "agreement": "pending"
+        },
+        "co+ego+era": {
+          "weights": {
+            "co": 1.0,
+            "ego": 0.8,
+            "era": 0.3
+          },
+          "n_clusters": 6,
+          "share_unplaced": 0.0554,
+          "agreement": "pending"
+        },
+        "co+ego+era+burst (default)": {
+          "weights": {
+            "co": 1.0,
+            "ego": 0.8,
+            "era": 0.3,
+            "burst": 1.0
+          },
+          "n_clusters": 5,
+          "share_unplaced": 0.0338,
+          "agreement": "pending"
+        },
+        "co+ego+era+burst+role0.2": {
+          "weights": {
+            "co": 1.0,
+            "ego": 0.8,
+            "era": 0.3,
+            "burst": 1.0,
+            "role": 0.2
+          },
+          "n_clusters": 5,
+          "share_unplaced": 0.0,
+          "agreement": "pending"
+        }
+      },
+      "note": "Each weight set clustered with seed 0. Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
+    },
+    "note": "The author's own export, aggregates only. No ground truth beyond hand labels."
+  }
+}
