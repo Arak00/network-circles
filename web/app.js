@@ -263,7 +263,7 @@ function getPyodide() {
 const tick = () => new Promise((r) => setTimeout(r, 30));
 let busy = false;
 async function runFiles(files) {
-  if (busy) return;  // one run at a time; later drops/picks are ignored until it finishes
+  if (busy || window.DEMO_GRAPH) return;  // one run at a time; later drops/picks are ignored until it finishes
   const all = [...files], csv = all.filter((f) => /\.csv$/i.test(f.name));
   if (all.some((f) => /\.zip$/i.test(f.name)) && !csv.length) return status("Zip files are not read. Unzip the export and drop the CSV files.", true);
   if (!csv.some((f) => /^connections\.csv$/i.test(f.name))) return status("Connections.csv is required. Drop it together with Positions.csv.", true);
@@ -305,6 +305,8 @@ new MutationObserver(retheme).observe(document.documentElement, { attributes: tr
 applyMotionPref();
 
 (async () => {
+  // Static demo build (src/build_demo.py) embeds the synthetic graph; there is no drop mode there.
+  if (window.DEMO_GRAPH) return render(window.DEMO_GRAPH, `Synthetic demo: ${window.DEMO_GRAPH.meta.n_people} fictional people`);
   const p = new URLSearchParams(location.search).get("data") || "../demo/graph.json";
   const url = new URL(p, location.href);
   const fail = (msg) => { $("source").textContent = "Not loaded"; $("empty").textContent = msg; };
