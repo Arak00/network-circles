@@ -6,8 +6,8 @@ On a synthetic export with planted circles, the default settings recover them wi
 
 The tool runs in your browser tab. You drop Connections.csv and Positions.csv on the page, and Python (Pyodide, loaded from a CDN) does the work locally. Your files are never uploaded. The public demo uses fictional people only.
 
-Demo: [demo link]
-Code and method write-up: [repo link]
+Demo: https://arak00.github.io/network-circles/
+Code and method write-up: https://github.com/Arak00/network-circles
 
 [video]
 
