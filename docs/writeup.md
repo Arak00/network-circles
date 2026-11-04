@@ -31,7 +31,7 @@ Diagram of the pipeline: [docs/method.png](method.png)
 |---|---|---|---|
 | SNAP ego-Facebook | 10 egos (58 to 1,035 alters each) | Mean F1 circle to community 0.35; balanced F1 0.45 (range 0.15 to 0.57); NMI on single-circle alters 0.68 (range 0.41 to 0.93) | Leiden finds hand-drawn circles on real friend edges. It doesn't test inference from an export, which has none. |
 | Synthetic recovery | 220 of 300 people (noise excluded), 10 seeds | ARI 0.61 (seed range 0.61 to 0.61); NMI 0.66 at seed 0 | Recovers circles planted in data this project generated. A sanity check, since the project knows what it planted. |
-| Weight ablation (synthetic) | 220 people, 10 seeds per set | Company only 0.40; company + burst 0.61 (default); + ego 0.57; + era 0.52 (min 0.39); + role 0.50 (min 0.35) | Era and role links force everyone into a few blobs (23 clusters become 6, none unplaced). The ego link added nothing. Real-data agreement is pending. |
+| Weight ablation (synthetic) | 220 people, 10 seeds per set | Company only 0.40; company + burst 0.61 (default); + ego 0.57; + era 0.52 (min 0.39); + role 0.50 (min 0.35) | Era and role links force everyone into a few blobs (23 clusters become 6, none unplaced). The ego link lowered agreement (0.61 to 0.57). Real-data agreement is pending. |
 | Seed stability (synthetic) | 45 seed pairs (10 seeds) | Mean ARI 0.99, min 0.95; 23 to 24 clusters | The partition does not hinge on the random seed. A stable answer can still be wrong. |
 | Configuration-model null (synthetic) | 100 null graphs; 300 nodes, 1,729 edges | Unweighted Leiden Q 0.69 vs null mean 0.22, z = 110.04 | The structure isn't degree noise. Weak because same-company cliques are modular by construction, and it ignores weights. |
 | Weight-shuffle null (synthetic) | 100 shuffles | Weighted Q 0.66 vs shuffled 0.69, z = -9.68 | Shuffled weights score slightly higher, so the weights add no modularity beyond which pairs are linked. Weak because modularity measures separability, not correctness. |
@@ -51,7 +51,7 @@ Timing is the other weak spot. A new account often adds a large batch of people 
 
 In the browser, your CSV files are read inside the tab with `File.text()` and processed by `netmap.py` running in Pyodide. Nothing is uploaded. The Pyodide runtime downloads from the jsDelivr CDN; sigma.js and graphology are vendored in `web/vendor/`. The command-line path runs entirely on your machine.
 
-The repository contains only synthetic data (`demo/`, fictional names and companies) and aggregate metrics with no names, companies, titles or dates. `data/` and `results/private/` are gitignored.
+The repository contains only synthetic data (`demo/`, fictional names and companies) and aggregate metrics computed on that synthetic data. Metrics from a real export stay in `results/private/`. `data/` and `results/private/` are gitignored.
 
 ## Limitations and next steps
 
@@ -61,9 +61,3 @@ The repository contains only synthetic data (`demo/`, fictional names and compan
 - `Invitations.csv` and `Recommendations_Received.csv` are loaded if present but don't feed the clustering yet.
 - The configuration-model null is unweighted; a weighted one is not built yet.
 - Next: fill the 50 labels and 30 pairs, collect 2 to 3 tester forms, then re-pick the default weights on the hand labels instead of synthetic truth.
-
-## From my own export (optional, remove before publishing if preferred)
-
-I ran the tool on my own export, 325 connections. With the default links it finds 7 clusters of 222, 30, 20, 14, 12, 2 and 2 people, with an unplaced share of 0.07. Across 10 seeds (45 pairs) the mean ARI is 1.00 and the lowest is 0.98, with 6 or 7 clusters.
-
-The largest group, 222 people, lines up with the connections I added in the first two months after setting up the account: 234 of the 325 are dated January and February 2025. That is my reading of the dates, and the hand labels will confirm it or not. If it holds, that group is the bootstrap burst described above, and the biggest group on my map reflects when I joined more than where those people came from.

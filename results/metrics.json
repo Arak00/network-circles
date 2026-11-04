@@ -1,6 +1,6 @@
 {
   "generated_by": "src/validate.py",
-  "dataset_note": "null_model/stability/ablation/synthetic_recovery use the synthetic demo export; real-data aggregates are under 'real'.",
+  "dataset_note": "null_model/stability/ablation/synthetic_recovery use the synthetic demo export. Real-export aggregates stay in results/private/metrics_real.json (gitignored); only the hand-label agreement scores are published here.",
   "snap": {
     "n": 10,
     "mean": {
@@ -247,109 +247,5 @@
     "labels": "pending",
     "pairs": "pending"
   },
-  "testers": "pending",
-  "real": {
-    "n": 325,
-    "n_edges": 27990,
-    "n_clusters": 7,
-    "share_unplaced": 0.0708,
-    "cluster_sizes": [
-      222,
-      30,
-      20,
-      14,
-      12,
-      2,
-      2
-    ],
-    "null_model": {
-      "weight_shuffle": {
-        "n": 100,
-        "q_leiden": 0.2567,
-        "null_mean": 0.0823,
-        "null_sd": 0.0012,
-        "z": 146.3669,
-        "note": "Leiden weighted Q vs the same graph with edge weights shuffled. Tests whether the link-type weights carry structure beyond graph topology."
-      },
-      "n": 100,
-      "n_nodes": 325,
-      "n_edges": 27990,
-      "density": 0.5316,
-      "q_weighted": 0.2567,
-      "q_unweighted_same_partition": 0.0451,
-      "q_unweighted_leiden": 0.0506,
-      "null_mean": 0.0575,
-      "null_sd": 0.0017,
-      "z": -4.1483,
-      "note": "Leiden Q on the unweighted projection vs Leiden on 100 configuration-model graphs (same degrees, multi-edges allowed). Weighted null skipped, so this ignores edge weights. Shared-company cliques are trivially modular, so a large z says the structure is not degree noise, not that clusters are right; on a dense projection (era/burst near-cliques) unweighted Q is near zero and the test says little."
-    },
-    "stability": {
-      "n": 45,
-      "n_seeds": 10,
-      "ari_mean": 0.9954,
-      "ari_min": 0.9772,
-      "n_clusters_range": [
-        6,
-        7
-      ],
-      "note": "Pairwise ARI between Leiden runs with seeds 0-9 on the default projection. Shows the partition does not hinge on the seed; says nothing about whether it is correct."
-    },
-    "ablation": {
-      "n": 325,
-      "sets": {
-        "co": {
-          "weights": {
-            "co": 1.0
-          },
-          "n_clusters": 16,
-          "share_unplaced": 0.7477,
-          "agreement": "pending"
-        },
-        "co+burst (default)": {
-          "weights": {
-            "co": 1.0,
-            "burst": 1.0
-          },
-          "n_clusters": 7,
-          "share_unplaced": 0.0708,
-          "agreement": "pending"
-        },
-        "co+ego+burst": {
-          "weights": {
-            "co": 1.0,
-            "ego": 0.8,
-            "burst": 1.0
-          },
-          "n_clusters": 7,
-          "share_unplaced": 0.0708,
-          "agreement": "pending"
-        },
-        "co+ego+era+burst": {
-          "weights": {
-            "co": 1.0,
-            "ego": 0.8,
-            "era": 0.3,
-            "burst": 1.0
-          },
-          "n_clusters": 4,
-          "share_unplaced": 0.0,
-          "agreement": "pending"
-        },
-        "co+ego+era+burst+role0.2": {
-          "weights": {
-            "co": 1.0,
-            "ego": 0.8,
-            "era": 0.3,
-            "burst": 1.0,
-            "role": 0.2
-          },
-          "n_clusters": 4,
-          "share_unplaced": 0.0,
-          "agreement": "pending"
-        }
-      },
-      "note": "Each weight set clustered with seeds 0-9 (agreement = mean). Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
-    },
-    "note": "The author's own export, aggregates only. No ground truth beyond hand labels."
-  }
+  "testers": "pending"
 }

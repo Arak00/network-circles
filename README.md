@@ -59,7 +59,7 @@ To regenerate the synthetic-data metrics:
 python src/validate.py run none
 ```
 
-This rewrites `results/metrics.json` and sets the real-data and hand-label sections to `pending`. The SNAP section also stays `pending` unless you download `https://snap.stanford.edu/data/facebook.tar.gz` and extract it into `data/snap/`.
+This rewrites `results/metrics.json` with the hand-label section set to `pending`. Real-export aggregates only ever go to `results/private/metrics_real.json`. The SNAP section also stays `pending` unless you download `https://snap.stanford.edu/data/facebook.tar.gz` and extract it into `data/snap/`.
 
 ## Repo layout
 

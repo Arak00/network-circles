@@ -292,20 +292,24 @@ def run(real_dir):
     t0 = time.time()
     df, g, memb, rec, truth_scorer = synthetic_section()
     m = {"generated_by": "src/validate.py", "dataset_note": "null_model/stability/ablation/synthetic_recovery use "
-         "the synthetic demo export; real-data aggregates are under 'real'.",
+         "the synthetic demo export. Real-export aggregates stay in results/private/metrics_real.json (gitignored); "
+         "only the hand-label agreement scores are published here.",
          "snap": snap_section(), "null_model": null_model(g, memb), "stability": stability(g),
          "ablation": ablation(df, truth_scorer), "synthetic_recovery": rec, "hand_labels": PENDING,
-         "testers": testers_section(), "real": PENDING}
+         "testers": testers_section()}
     if real_dir and os.path.isdir(real_dir):
         rdf, rg, _ = netmap.build(real_dir)
         rm, _ = netmap.cluster(rg, 0)
         sizes = sorted(Counter(x for x in rm if x >= 0).values(), reverse=True)
         m["hand_labels"] = hand_labels_section(rm)
-        m["real"] = {"n": len(rdf), "n_edges": rg.ecount(), "n_clusters": len(sizes),
+        real = {"n": len(rdf), "n_edges": rg.ecount(), "n_clusters": len(sizes),
                      "share_unplaced": r4(rm.count(-1) / len(rm)), "cluster_sizes": sizes,
                      "null_model": null_model(rg, rm), "stability": stability(rg),
                      "ablation": ablation(rdf, hand_label_scorer),
                      "note": "The author's own export, aggregates only. No ground truth beyond hand labels."}
+        os.makedirs(PRIV, exist_ok=True)
+        with open(os.path.join(PRIV, "metrics_real.json"), "w", encoding="utf-8") as f:
+            json.dump(real, f, indent=2)
     os.makedirs(os.path.join(ROOT, "results"), exist_ok=True)
     with open(os.path.join(ROOT, "results", "metrics.json"), "w", encoding="utf-8") as f:
         json.dump(m, f, indent=2, ensure_ascii=True)
