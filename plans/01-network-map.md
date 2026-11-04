@@ -24,7 +24,7 @@ Verified by running them (Python 3.12 venv; Pyodide lock v0.27.7):
 - Pyodide 0.27.7 ships `igraph 0.11.4`, `pandas 2.2.3` and `networkx`. **No leidenalg, no rapidfuzz.**
   So: no leidenalg import and no rapidfuzz; fuzzy matching uses stdlib `difflib.SequenceMatcher`.
 - JS (UMD, jsDelivr, return 200): `sigma@3.0.2/dist/sigma.min.js`, `graphology@0.26.0/dist/graphology.umd.min.js`,
-  `graphology-library@0.8.0/dist/graphology-library.min.js` (has `layout.forceAtlas2`), `pyodide v0.27.7 full`.
+  `graphology-library@0.8.0/dist/graphology-library.min.js` (ForceAtlas2 is the global `graphologyLibrary.layoutForceAtlas2`, with `.assign` and `.inferSettings`; `graphologyLibrary.layout` has no forceAtlas2. Other globals: `graphology` is the Graph class, the renderer is `Sigma.Sigma`), `pyodide v0.27.7 full`.
   sigma 4 is out, but 3.0.2 has a known UMD build. Use 3.0.2.
 - SNAP `https://snap.stanford.edu/data/facebook.tar.gz` returns 200 (has `*.circles` and `*.edges` per ego).
 - Export CSV quirk: Connections.csv has a "Notes:" preamble. Find the header row by scanning for the first row with >2 fields.

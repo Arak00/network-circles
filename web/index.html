@@ -8,22 +8,23 @@
 <style>
 /* Layout: full-height tool. Map left, cluster panel right, timeline under the map. Stacks on phones. */
 :root {
-  --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #75736d;
+  --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964;
   --line: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6; --focus: #2a78d6;
   --edge: #dddcd6; --err: #c0392f; --bar: #c3c2b7; --banner: #eef3fa;
+  --small: #8a887f; --unplaced: #c3c2b7;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
   --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --focus: #6da7ec;
-  --edge: #353533; --err: #e66767; --bar: #4a4945; --banner: #17202b; color-scheme: dark } }
+  --edge: #353533; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
   --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --focus: #6da7ec;
-  --edge: #353533; --err: #e66767; --bar: #4a4945; --banner: #17202b; color-scheme: dark }
+  --edge: #353533; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; color-scheme: dark }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
-.app { display: grid; grid-template-rows: auto 1fr; height: 100%; box-sizing: border-box;
+.app { display: grid; grid-template-rows: auto auto 1fr; height: 100%; box-sizing: border-box;
   padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 12px; }
 header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
 h1 { font-size: 18px; margin: 0; text-wrap: balance; }
@@ -66,10 +67,20 @@ button[aria-pressed="true"] .sw { border-radius: 3px; }
 .lbl { overflow-wrap: anywhere; }
 .num { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
 .meta { margin: 0; padding-left: 16px; color: var(--ink-2); font-size: 12px; display: grid; gap: 4px; }
-.banner { background: var(--banner); border-color: var(--line); font-size: 12px; color: var(--ink-2); }
-#drop { border: 1.5px dashed var(--axis); border-radius: 6px; padding: 10px; text-align: center; display: grid; gap: 6px; }
-#drop.over { border-color: var(--accent); background: var(--bg); }
-#status { font-size: 12px; color: var(--ink-2); margin: 0; min-height: 1.4em; }
+#drop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; background: var(--banner); border: 1.5px dashed var(--axis);
+  border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--ink-2); }
+#drop p { margin: 0; flex: 1 1 320px; }
+#drop.over { border-color: var(--accent); }
+#status { font-size: 12px; color: var(--ink); margin: 0; flex-basis: 100%; }
+#status:empty { display: none; }
+.lhead { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 0 6px 2px 26px; }
+#legend details { padding: 0 6px 4px 26px; font-size: 12px; color: var(--ink-2); }
+#legend details ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+#legend summary { cursor: pointer; color: var(--muted); }
+#empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-2); padding: 16px; text-align: center; }
+#empty[hidden] { display: none; }
+#canvas, #canvas > div { position: absolute; inset: 0; }
+.timeline[hidden] { display: none; }  /* sigma owns this box; kill() empties it */
 #status.err { color: var(--err); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 760px) {
@@ -90,14 +101,20 @@ button[aria-pressed="true"] .sw { border-radius: 3px; }
     <p class="sub">Where your LinkedIn connections come from, grouped by shared companies and timing.</p>
     <p class="src" id="source">Loading…</p>
   </header>
+  <div id="drop">
+    <button type="button" id="pick">Open your export</button>
+    <input id="files" type="file" multiple accept=".csv" class="vh" tabindex="-1" aria-label="LinkedIn export CSV files">
+    <p>Choose or drop Connections.csv and Positions.csv anywhere on the page (unzip the export first). Libraries download from a CDN; your files are read inside this tab and never uploaded.</p>
+    <p id="status" role="status"></p>
+  </div>
   <main>
     <section class="stage" aria-label="Network map">
-      <div id="graph" role="img" aria-label="Network map of connections, coloured by cluster"><div id="tip" hidden></div></div>
+      <div id="graph" role="img" aria-label="Network map of connections, coloured by cluster"><div id="tip" hidden></div><p id="empty">Loading the demo network…</p><div id="canvas"></div></div>
       <div class="timeline">
-        <button id="play" type="button" aria-describedby="motionNote">Play</button>
+        <button id="play" type="button" aria-describedby="motionNote" disabled>Play</button>
         <div>
           <label for="month" class="vh">Show connections made up to month</label>
-          <input id="month" type="range" min="0" max="0" value="0" step="1">
+          <input id="month" type="range" min="0" max="0" value="0" step="1" disabled>
         </div>
         <output id="now" for="month" aria-live="off"></output>
         <svg id="spark" role="img" aria-label="Connections added per month" preserveAspectRatio="none"></svg>
@@ -109,22 +126,12 @@ button[aria-pressed="true"] .sw { border-radius: 3px; }
       <div class="card">
         <h2>Circles</h2>
         <p class="hint">Click a circle to fold its people into one node. Labels are generated: top company and top role.</p>
+        <div class="lhead" aria-hidden="true"><span>Circle</span><span>people · cohesion</span></div>
         <ul id="legend"></ul>
       </div>
       <div class="card">
         <h2>How far to trust this</h2>
         <ul class="meta" id="meta"></ul>
-      </div>
-      <div class="card banner">
-        <h2>Use your own export</h2>
-        <p style="margin:0 0 8px">Libraries download from a CDN; your files are read inside this tab and never uploaded.</p>
-        <div id="drop">
-          <span>Drop Connections.csv and Positions.csv here</span>
-          <button type="button" id="pick">Choose CSV files</button>
-          <input id="files" type="file" multiple accept=".csv" class="vh" tabindex="-1" aria-label="LinkedIn export CSV files">
-          <span class="hint" style="margin:0">Unzip the export first. Zip files are not read.</span>
-        </div>
-        <p id="status" role="status"></p>
       </div>
     </aside>
   </main>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Map Method</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1320px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    .scroll { overflow-x: auto; }
+    svg { width: 100%; min-width: 900px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Method · LinkedIn network map</p>
+    <h1>From a LinkedIn export to a map of where your network comes from</h1>
+
+    <div class="scroll">
+    <svg viewBox="0 0 1304 488" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="method-title method-desc">
+      <title id="method-title">How the LinkedIn network map is built</title>
+      <desc id="method-desc">Six-step pipeline: export CSVs, clean and merge company names, give each person affiliations (shared current company and connection bursts by default), build a weighted person-to-person graph, cluster it with Leiden, and show it in a local browser viewer; the export has no ties between your contacts.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <!-- Python bracket over steps 02–05 -->
+      <line x1="232" y1="44" x2="1072" y2="44" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <line x1="232" y1="44" x2="232" y2="52" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <line x1="1072" y1="44" x2="1072" y2="52" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <rect x="436" y="28" width="432" height="12" fill="#f5f5f5"/>
+      <text x="652" y="37" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SRC/NETMAP.PY · RUNS FROM THE CLI OR IN THE BROWSER (PYODIDE)</text>
+
+      <!-- Step eyebrows -->
+      <g fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">
+        <text x="40" y="76">01 · EXPORT</text>
+        <text x="232" y="76">02 · CLEAN</text>
+        <text x="424" y="76">03 · AFFILIATIONS</text>
+        <text x="720" y="76">04 · GRAPH</text>
+        <text x="912" y="76">05 · CLUSTER</text>
+        <text x="1104" y="76">06 · VIEW</text>
+      </g>
+
+      <!-- Arrows (drawn before boxes) -->
+      <line x1="200" y1="168" x2="230" y2="168" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+      <line x1="392" y1="168" x2="422" y2="168" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+      <line x1="688" y1="168" x2="718" y2="168" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+      <line x1="880" y1="168" x2="910" y2="168" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+      <line x1="1072" y1="168" x2="1102" y2="168" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <!-- 01 Export (input) -->
+      <rect x="40" y="88" width="160" height="176" rx="6" fill="#f5f5f5"/>
+      <rect x="40" y="88" width="160" height="176" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+      <rect x="52" y="96" width="28" height="12" rx="2" fill="none" stroke="rgba(122,131,153,0.5)" stroke-width="0.8"/>
+      <text x="66" y="105" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CSV</text>
+      <text x="52" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">LinkedIn export</text>
+      <text x="52" y="156" fill="#2d3142" font-size="9" font-family="'Geist Mono', monospace">Connections.csv</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="52" y="172">name, current company,</text>
+        <text x="52" y="188">title, connected-on date</text>
+      </g>
+      <text x="52" y="216" fill="#2d3142" font-size="9" font-family="'Geist Mono', monospace">Positions.csv</text>
+      <text x="52" y="232" fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">your own jobs</text>
+
+      <!-- 02 Clean + merge -->
+      <rect x="232" y="88" width="160" height="176" rx="6" fill="#f5f5f5"/>
+      <rect x="232" y="88" width="160" height="176" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="244" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Clean + merge</text>
+      <text x="244" y="148" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">company names</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="244" y="172">Fuzzy match (difflib)</text>
+        <text x="244" y="196">Merge list for review</text>
+        <text x="244" y="228">Overrides file</text>
+      </g>
+      <g fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">
+        <text x="244" y="210">merges.csv</text>
+        <text x="244" y="242">merge_overrides.csv</text>
+      </g>
+
+      <!-- 03 Affiliations -->
+      <rect x="424" y="88" width="264" height="316" rx="6" fill="#f5f5f5"/>
+      <rect x="424" y="88" width="264" height="316" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="436" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Affiliations per person</text>
+      <!-- default links (focal) -->
+      <rect x="436" y="148" width="240" height="124" rx="4" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <text x="448" y="164" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.12em">DEFAULT · USED FOR CLUSTERING</text>
+      <text x="448" y="188" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Same current company</text>
+      <text x="448" y="204" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">weight 1</text>
+      <text x="448" y="228" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Connection burst</text>
+      <text x="448" y="244" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">added within 3 days of each other</text>
+      <text x="448" y="260" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">weight 1, scaled down by burst size</text>
+      <!-- optional links -->
+      <rect x="436" y="288" width="240" height="104" rx="4" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="448" y="304" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.12em">OPTIONAL · OFF BY DEFAULT</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="448" y="328">A company you worked at</text>
+        <text x="448" y="344">Your job when you connected</text>
+        <text x="448" y="360">Role family (from job title)</text>
+      </g>
+      <text x="448" y="380" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace">kept for the ablation</text>
+
+      <!-- 04 Graph (store) -->
+      <rect x="720" y="88" width="160" height="176" rx="6" fill="#f5f5f5"/>
+      <rect x="720" y="88" width="160" height="176" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <text x="732" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Weighted person–</text>
+      <text x="732" y="148" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">person graph</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="732" y="172">Two people are linked</text>
+        <text x="732" y="188">if they share an</text>
+        <text x="732" y="204">affiliation. Weights</text>
+        <text x="732" y="220">add up per pair.</text>
+      </g>
+
+      <!-- 05 Leiden -->
+      <rect x="912" y="88" width="160" height="176" rx="6" fill="#f5f5f5"/>
+      <rect x="912" y="88" width="160" height="176" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="924" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Leiden clustering</text>
+      <text x="924" y="148" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">modularity, weighted</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="924" y="172">One cluster per</text>
+        <text x="924" y="188">community.</text>
+        <text x="924" y="212">No shared affiliation:</text>
+        <text x="924" y="228">the person is “unplaced”.</text>
+      </g>
+
+      <!-- 06 Viewer -->
+      <rect x="1104" y="88" width="160" height="176" rx="6" fill="#f5f5f5"/>
+      <rect x="1104" y="88" width="160" height="176" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="1116" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif">Browser viewer</text>
+      <text x="1116" y="148" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace">sigma.js + ForceAtlas2</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="1116" y="172">Collapsible clusters</text>
+        <text x="1116" y="188">Timeline</text>
+        <text x="1116" y="212">Runs the same Python</text>
+        <text x="1116" y="228">in the page (Pyodide)</text>
+      </g>
+
+      <!-- Privacy note (under 01–02) -->
+      <rect x="40" y="296" width="352" height="108" rx="6" fill="none" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+      <text x="56" y="320" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">PRIVACY</text>
+      <text x="56" y="352" fill="#2d3142" font-size="20" font-style="italic" font-family="'Instrument Serif', serif">Everything runs locally.</text>
+      <text x="56" y="380" fill="#2d3142" font-size="20" font-style="italic" font-family="'Instrument Serif', serif">Nothing is uploaded.</text>
+
+      <!-- Callout: Not in the export (under 04–06) -->
+      <rect x="720" y="296" width="544" height="108" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="736" y="320" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">NOT IN THE EXPORT</text>
+      <text x="736" y="348" fill="#2d3142" font-size="20" font-style="italic" font-family="'Instrument Serif', serif">Who knows whom.</text>
+      <g fill="#4f5d75" font-size="12" font-family="'Geist', sans-serif">
+        <text x="736" y="372">The export has no ties between your contacts (no alter–alter ties),</text>
+        <text x="736" y="388">so the map can't show bridges or brokerage scores.</text>
+      </g>
+
+      <!-- Legend -->
+      <line x1="40" y1="432" x2="1264" y2="432" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="40" y="460" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <g font-size="9" font-family="'Geist Mono', monospace" fill="#4f5d75">
+        <rect x="120" y="448" width="20" height="16" rx="3" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <text x="148" y="460">Input file</text>
+        <rect x="280" y="448" width="20" height="16" rx="3" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="308" y="460">Processing step</text>
+        <rect x="460" y="448" width="20" height="16" rx="3" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="488" y="460">Data structure</text>
+        <rect x="640" y="448" width="20" height="16" rx="3" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+        <text x="668" y="460">Default links (clustering)</text>
+        <rect x="880" y="448" width="20" height="16" rx="3" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="908" y="460">Optional, or absent</text>
+      </g>
+    </svg>
+    </div>
+  </div>
+</body>
+</html>
