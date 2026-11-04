@@ -4,9 +4,9 @@
   "snap": {
     "n": 10,
     "mean": {
-      "f1_circle_to_comm": 0.3591,
-      "f1_balanced": 0.4547,
-      "nmi_single_circle": 0.6818
+      "f1_circle_to_comm": 0.3512,
+      "f1_balanced": 0.4467,
+      "nmi_single_circle": 0.6775
     },
     "per_ego": [
       {
@@ -15,9 +15,9 @@
         "n_edges": 2519,
         "n_circles": 24,
         "n_communities": 13,
-        "f1_circle_to_comm": 0.2496,
-        "f1_balanced": 0.295,
-        "nmi_single_circle": 0.4243,
+        "f1_circle_to_comm": 0.2465,
+        "f1_balanced": 0.293,
+        "nmi_single_circle": 0.4078,
         "n_single_circle": 247
       },
       {
@@ -25,10 +25,10 @@
         "n_alters": 1035,
         "n_edges": 26749,
         "n_circles": 9,
-        "n_communities": 8,
-        "f1_circle_to_comm": 0.3246,
-        "f1_balanced": 0.3486,
-        "nmi_single_circle": 0.597,
+        "n_communities": 7,
+        "f1_circle_to_comm": 0.3189,
+        "f1_balanced": 0.3487,
+        "nmi_single_circle": 0.6021,
         "n_single_circle": 462
       },
       {
@@ -37,8 +37,8 @@
         "n_edges": 3192,
         "n_circles": 14,
         "n_communities": 8,
-        "f1_circle_to_comm": 0.4857,
-        "f1_balanced": 0.5365,
+        "f1_circle_to_comm": 0.4726,
+        "f1_balanced": 0.5101,
         "nmi_single_circle": 0.5455,
         "n_single_circle": 34
       },
@@ -59,9 +59,9 @@
         "n_edges": 1656,
         "n_circles": 14,
         "n_communities": 6,
-        "f1_circle_to_comm": 0.4587,
-        "f1_balanced": 0.4893,
-        "nmi_single_circle": 0.5012,
+        "f1_circle_to_comm": 0.4494,
+        "f1_balanced": 0.4763,
+        "nmi_single_circle": 0.4677,
         "n_single_circle": 34
       },
       {
@@ -70,9 +70,9 @@
         "n_edges": 270,
         "n_circles": 13,
         "n_communities": 5,
-        "f1_circle_to_comm": 0.465,
-        "f1_balanced": 0.5716,
-        "nmi_single_circle": 0.8486,
+        "f1_circle_to_comm": 0.4693,
+        "f1_balanced": 0.5712,
+        "nmi_single_circle": 0.8696,
         "n_single_circle": 30
       },
       {
@@ -80,10 +80,10 @@
         "n_alters": 792,
         "n_edges": 14024,
         "n_circles": 17,
-        "n_communities": 11,
-        "f1_circle_to_comm": 0.4592,
-        "f1_balanced": 0.5719,
-        "nmi_single_circle": 0.7289,
+        "n_communities": 10,
+        "f1_circle_to_comm": 0.4073,
+        "f1_balanced": 0.5341,
+        "nmi_single_circle": 0.7096,
         "n_single_circle": 763
       },
       {
@@ -125,32 +125,32 @@
   "null_model": {
     "weight_shuffle": {
       "n": 100,
-      "q_leiden": 0.5897,
-      "null_mean": 0.6175,
-      "null_sd": 0.0106,
-      "z": -2.6264,
+      "q_leiden": 0.6561,
+      "null_mean": 0.6912,
+      "null_sd": 0.0036,
+      "z": -9.6761,
       "note": "Leiden weighted Q vs the same graph with edge weights shuffled. Tests whether the link-type weights carry structure beyond graph topology."
     },
     "n": 100,
     "n_nodes": 300,
-    "n_edges": 6914,
-    "density": 0.1542,
-    "q_weighted": 0.5897,
-    "q_unweighted_same_partition": 0.4941,
-    "q_unweighted_leiden": 0.617,
-    "null_mean": 0.1248,
-    "null_sd": 0.0027,
-    "z": 183.3376,
+    "n_edges": 1729,
+    "density": 0.0386,
+    "q_weighted": 0.6561,
+    "q_unweighted_same_partition": 0.6642,
+    "q_unweighted_leiden": 0.6911,
+    "null_mean": 0.2202,
+    "null_sd": 0.0043,
+    "z": 110.0445,
     "note": "Leiden Q on the unweighted projection vs Leiden on 100 configuration-model graphs (same degrees, multi-edges allowed). Weighted null skipped, so this ignores edge weights. Shared-company cliques are trivially modular, so a large z says the structure is not degree noise, not that clusters are right; on a dense projection (era/burst near-cliques) unweighted Q is near zero and the test says little."
   },
   "stability": {
     "n": 45,
     "n_seeds": 10,
-    "ari_mean": 0.8187,
-    "ari_min": 0.6116,
+    "ari_mean": 0.99,
+    "ari_min": 0.9498,
     "n_clusters_range": [
-      8,
-      8
+      23,
+      24
     ],
     "note": "Pairwise ARI between Leiden runs with seeds 0-9 on the default projection. Shows the partition does not hinge on the seed; says nothing about whether it is correct."
   },
@@ -164,46 +164,50 @@
         "n_clusters": 45,
         "share_unplaced": 0.2967,
         "agreement": {
-          "ari": 0.4024,
+          "ari_mean": 0.4024,
+          "ari_min": 0.4024,
           "n": 220
         }
       },
-      "co+ego": {
+      "co+burst (default)": {
         "weights": {
           "co": 1.0,
-          "ego": 0.8
+          "burst": 1.0
         },
-        "n_clusters": 45,
-        "share_unplaced": 0.2967,
+        "n_clusters": 23,
+        "share_unplaced": 0.1967,
         "agreement": {
-          "ari": 0.4024,
+          "ari_mean": 0.6107,
+          "ari_min": 0.6093,
           "n": 220
         }
       },
-      "co+ego+era": {
+      "co+ego+burst": {
         "weights": {
           "co": 1.0,
           "ego": 0.8,
-          "era": 0.3
+          "burst": 1.0
         },
-        "n_clusters": 10,
-        "share_unplaced": 0.0633,
+        "n_clusters": 23,
+        "share_unplaced": 0.1967,
         "agreement": {
-          "ari": 0.333,
+          "ari_mean": 0.5736,
+          "ari_min": 0.5629,
           "n": 220
         }
       },
-      "co+ego+era+burst (default)": {
+      "co+ego+era+burst": {
         "weights": {
           "co": 1.0,
           "ego": 0.8,
           "era": 0.3,
           "burst": 1.0
         },
-        "n_clusters": 8,
-        "share_unplaced": 0.0367,
+        "n_clusters": 6,
+        "share_unplaced": 0.0,
         "agreement": {
-          "ari": 0.6286,
+          "ari_mean": 0.5166,
+          "ari_min": 0.3917,
           "n": 220
         }
       },
@@ -215,25 +219,26 @@
           "burst": 1.0,
           "role": 0.2
         },
-        "n_clusters": 7,
-        "share_unplaced": 0.01,
+        "n_clusters": 6,
+        "share_unplaced": 0.0,
         "agreement": {
-          "ari": 0.3659,
+          "ari_mean": 0.4979,
+          "ari_min": 0.3502,
           "n": 220
         }
       }
     },
-    "note": "Each weight set clustered with seed 0. Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
+    "note": "Each weight set clustered with seeds 0-9 (agreement = mean). Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
   },
   "synthetic_recovery": {
     "n": 220,
     "n_total": 300,
-    "ari": 0.6286,
-    "nmi": 0.7093,
-    "ari_seed_mean": 0.5725,
+    "ari": 0.6108,
+    "nmi": 0.6638,
+    "ari_seed_mean": 0.6107,
     "ari_seed_range": [
-      0.4415,
-      0.6286
+      0.6093,
+      0.6108
     ],
     "n_seeds": 10,
     "note": "Default weights on demo/data vs planted circles in demo/truth.csv, noise rows excluded. A sanity check on data this project generated (it knows the planted signals), not a validation."
@@ -245,45 +250,47 @@
   "testers": "pending",
   "real": {
     "n": 325,
-    "n_edges": 36163,
-    "n_clusters": 5,
-    "share_unplaced": 0.0338,
+    "n_edges": 27990,
+    "n_clusters": 7,
+    "share_unplaced": 0.0708,
     "cluster_sizes": [
-      234,
-      50,
+      222,
+      30,
+      20,
       14,
-      14,
+      12,
+      2,
       2
     ],
     "null_model": {
       "weight_shuffle": {
         "n": 100,
-        "q_leiden": 0.2248,
-        "null_mean": 0.0801,
-        "null_sd": 0.0011,
-        "z": 132.4613,
+        "q_leiden": 0.2567,
+        "null_mean": 0.0823,
+        "null_sd": 0.0012,
+        "z": 146.3669,
         "note": "Leiden weighted Q vs the same graph with edge weights shuffled. Tests whether the link-type weights carry structure beyond graph topology."
       },
       "n": 100,
       "n_nodes": 325,
-      "n_edges": 36163,
-      "density": 0.6869,
-      "q_weighted": 0.2248,
-      "q_unweighted_same_partition": 0.0299,
-      "q_unweighted_leiden": 0.034,
-      "null_mean": 0.0551,
-      "null_sd": 0.0011,
-      "z": -19.268,
+      "n_edges": 27990,
+      "density": 0.5316,
+      "q_weighted": 0.2567,
+      "q_unweighted_same_partition": 0.0451,
+      "q_unweighted_leiden": 0.0506,
+      "null_mean": 0.0575,
+      "null_sd": 0.0017,
+      "z": -4.1483,
       "note": "Leiden Q on the unweighted projection vs Leiden on 100 configuration-model graphs (same degrees, multi-edges allowed). Weighted null skipped, so this ignores edge weights. Shared-company cliques are trivially modular, so a large z says the structure is not degree noise, not that clusters are right; on a dense projection (era/burst near-cliques) unweighted Q is near zero and the test says little."
     },
     "stability": {
       "n": 45,
       "n_seeds": 10,
-      "ari_mean": 0.9358,
-      "ari_min": 0.87,
+      "ari_mean": 0.9954,
+      "ari_min": 0.9772,
       "n_clusters_range": [
-        5,
-        6
+        6,
+        7
       ],
       "note": "Pairwise ARI between Leiden runs with seeds 0-9 on the default projection. Shows the partition does not hinge on the seed; says nothing about whether it is correct."
     },
@@ -298,34 +305,34 @@
           "share_unplaced": 0.7477,
           "agreement": "pending"
         },
-        "co+ego": {
+        "co+burst (default)": {
           "weights": {
             "co": 1.0,
-            "ego": 0.8
+            "burst": 1.0
           },
-          "n_clusters": 16,
-          "share_unplaced": 0.7477,
+          "n_clusters": 7,
+          "share_unplaced": 0.0708,
           "agreement": "pending"
         },
-        "co+ego+era": {
+        "co+ego+burst": {
           "weights": {
             "co": 1.0,
             "ego": 0.8,
-            "era": 0.3
+            "burst": 1.0
           },
-          "n_clusters": 6,
-          "share_unplaced": 0.0554,
+          "n_clusters": 7,
+          "share_unplaced": 0.0708,
           "agreement": "pending"
         },
-        "co+ego+era+burst (default)": {
+        "co+ego+era+burst": {
           "weights": {
             "co": 1.0,
             "ego": 0.8,
             "era": 0.3,
             "burst": 1.0
           },
-          "n_clusters": 5,
-          "share_unplaced": 0.0338,
+          "n_clusters": 4,
+          "share_unplaced": 0.0,
           "agreement": "pending"
         },
         "co+ego+era+burst+role0.2": {
@@ -336,12 +343,12 @@
             "burst": 1.0,
             "role": 0.2
           },
-          "n_clusters": 5,
+          "n_clusters": 4,
           "share_unplaced": 0.0,
           "agreement": "pending"
         }
       },
-      "note": "Each weight set clustered with seed 0. Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
+      "note": "Each weight set clustered with seeds 0-9 (agreement = mean). Agreement is ARI against the reference (planted truth for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."
     },
     "note": "The author's own export, aggregates only. No ground truth beyond hand labels."
   }

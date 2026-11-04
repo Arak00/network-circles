@@ -11,29 +11,31 @@ from datetime import datetime
 import igraph as ig
 import pandas as pd
 
-# Chosen on synthetic recovery (validate.py ablation); role links hurt there, so role is shown, not linked.
-# Re-pick on hand labels when available.
-DEFAULT_W = {"co": 1.0, "ego": 0.8, "era": 0.3, "burst": 1.0, "role": 0.0}
+# Chosen by mean synthetic recovery over 10 seeds (validate.py ablation). era and role link near-cliques that
+# force everyone into a few blobs; ego added nothing. They stay available for the ablation. Re-pick on hand labels.
+DEFAULT_W = {"co": 1.0, "burst": 1.0}
 SCALED = ("role", "era", "burst")  # big affiliations: contribution divided by log2(size+1)
 LEGAL = {"inc", "ltd", "gmbh", "sa", "sas", "llc", "plc", "group", "bv", "co", "corp", "limited", "ag"}
 
 # ponytail: keyword map, first match wins; order matters (e.g. "data engineer" -> data, "product designer" -> design).
 ROLES = [
     ("student", r"student|intern|phd candidate|undergraduate|graduate"),
-    ("founder/exec", r"founder|co-founder|ceo|cto|coo|cfo|cmo|cpo|chief|owner|president|managing director|partner|board"),
+    ("founder/exec", r"founder|co-founder|ceo|cto|coo|cfo|cmo|cpo|chief|president|managing director|managing partner|board member"),
     ("recruiting/hr", r"recruit|talent|hr|human resources|people (?:ops|partner|operations)|sourcer"),
+    ("finance", r"financ|accountant|accounting|controller|investment|investor|banker|trader|treasury|audit|vc|venture"),
     ("data", r"data|analytics|analyst|machine learning|ml|ai|scientist|bi"),
     ("design", r"design|ux|ui|user experience|creative|art director|illustrator"),
-    ("eng", r"engineer|developer|software|devops|sre|architect|programmer|tech lead|qa|test|cto|firmware|backend|frontend|full.?stack"),
+    ("eng", r"engineer|developer|software|devops|sre|architect|programmer|tech lead|qa|test|firmware|backend|frontend|full.?stack"),
     ("product", r"product|pm|program manager|scrum|agile coach|delivery"),
     ("marketing", r"marketing|growth|brand|seo|content|communications|pr|social media|community|crm|retention|acquisition|affiliate"),
     ("sales/bd", r"sales|business development|bd|account (?:executive|manager)|partnerships|commercial|customer success|revenue"),
-    ("finance", r"financ|accountant|accounting|controller|investment|investor|analyst|banker|trader|treasury|audit|vc|venture"),
     ("research/academia", r"research|professor|lecturer|postdoc|academic|teacher|fellow"),
     ("ops", r"operations|ops|logistics|supply chain|procurement|project manager|office manager|administrat|coordinator|support|customer service"),
-    ("founder/exec", r"vp|vice president|head of|director|general manager"),  # seniority only if no function matched
+    ("founder/exec", r"vp|vice president|head of|director|general manager|partner|owner"),  # seniority only if no function matched
 ]
-ROLE_RE = [(fam, re.compile(r"\b(?:" + pat + r")", re.I)) for fam, pat in ROLES]
+# Short tokens (pr, ai, hr, ...) must be whole words; longer ones may be prefixes (financ, recruit).
+ROLE_RE = [(fam, re.compile(r"\b(?:" + "|".join(t + r"\b" if len(t) <= 3 else t for t in pat.split("|")) + ")", re.I))
+           for fam, pat in ROLES]
 
 
 # ---------- 1. load ----------
@@ -65,12 +67,13 @@ def load(d):
     conn = read_export_csv(os.path.join(d, "Connections.csv"))
     if conn is None:
         raise FileNotFoundError("Connections.csv missing or empty in " + d)
-    conn["connected_on"] = [parse_date(s, ("%d %b %Y",)) for s in conn.get("Connected On", [""] * len(conn))]
+    # pd.Series(dtype=object) keeps None as None (a datetime column would turn it into NaT, which breaks `is None`).
+    conn["connected_on"] = pd.Series([parse_date(s, ("%d %b %Y",)) for s in conn.get("Connected On", [""] * len(conn))], index=conn.index, dtype=object)
     pos = read_export_csv(os.path.join(d, "Positions.csv"))
     if pos is None:
         pos = pd.DataFrame(columns=["Company Name", "Title", "Started On", "Finished On"])
-    pos["start"] = [parse_date(s, ("%b %Y", "%Y")) for s in pos["Started On"]]
-    pos["end"] = [parse_date(s, ("%b %Y", "%Y")) for s in pos["Finished On"]]  # None = current
+    pos["start"] = pd.Series([parse_date(s, ("%b %Y", "%Y")) for s in pos["Started On"]], index=pos.index, dtype=object)
+    pos["end"] = pd.Series([parse_date(s, ("%b %Y", "%Y")) for s in pos["Finished On"]], index=pos.index, dtype=object)  # None = current
     return {
         "connections": conn,
         "positions": pos,

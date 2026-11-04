@@ -21,9 +21,9 @@ SNAP = os.path.join(ROOT, "data", "snap", "facebook")
 N_NULL, SEEDS, N_BOOT = 100, range(10), 1000
 ABLATION = {
     "co": {"co": 1.0},
-    "co+ego": {"co": 1.0, "ego": 0.8},
-    "co+ego+era": {"co": 1.0, "ego": 0.8, "era": 0.3},
-    "co+ego+era+burst (default)": {"co": 1.0, "ego": 0.8, "era": 0.3, "burst": 1.0},
+    "co+burst (default)": {"co": 1.0, "burst": 1.0},
+    "co+ego+burst": {"co": 1.0, "ego": 0.8, "burst": 1.0},
+    "co+ego+era+burst": {"co": 1.0, "ego": 0.8, "era": 0.3, "burst": 1.0},
     "co+ego+era+burst+role0.2": {"co": 1.0, "ego": 0.8, "era": 0.3, "burst": 1.0, "role": 0.2},
 }
 PENDING = "pending"
@@ -142,11 +142,15 @@ def stability(g):
 def ablation(df, scorer):
     rows = {}
     for name, w in ABLATION.items():
-        memb, _ = netmap.cluster(netmap.project(df, w), 0)
-        rows[name] = {"weights": w, "n_clusters": max(memb) + 1,
-                      "share_unplaced": r4(memb.count(-1) / len(memb)), "agreement": scorer(memb)}
+        g = netmap.project(df, w)
+        ms = [netmap.cluster(g, sd)[0] for sd in SEEDS]
+        sc = [scorer(m) for m in ms]
+        agree = sc[0] if sc[0] == PENDING else {"ari_mean": r4(statistics.mean(x["ari"] for x in sc)),
+                                                 "ari_min": r4(min(x["ari"] for x in sc)), "n": sc[0]["n"]}
+        rows[name] = {"weights": w, "n_clusters": max(ms[0]) + 1,
+                      "share_unplaced": r4(ms[0].count(-1) / len(ms[0])), "agreement": agree}
     return {"n": len(df), "sets": rows,
-            "note": "Each weight set clustered with seed 0. Agreement is ARI against the reference (planted truth "
+            "note": "Each weight set clustered with seeds 0-9 (agreement = mean). Agreement is ARI against the reference (planted truth "
                     "for synthetic, hand labels for real); n_clusters/unplaced show how much each link type connects."}
 
 
@@ -211,7 +215,7 @@ def hand_labels_section(memb):
                 v = cmp([p[1] for p in s], [p[0] for p in s], m)
                 if not math.isnan(v):
                     boot[m].append(v)
-        ci = lambda xs: [r4(xs[int(0.025 * len(xs))]), r4(xs[int(0.975 * len(xs)) - 1])] if xs else None
+        ci = lambda xs: [r4(xs[round(0.025 * (len(xs) - 1))]), r4(xs[round(0.975 * (len(xs) - 1))])] if xs else None
         out["labels"] = {"n": len(pts), "n_boot": N_BOOT, "n_label_values": len({p[1] for p in pts}),
                          "ari": r4(cmp([p[1] for p in pts], [p[0] for p in pts], "ari")), "ari_ci95": ci(sorted(boot["ari"])),
                          "nmi": r4(cmp([p[1] for p in pts], [p[0] for p in pts], "nmi")), "nmi_ci95": ci(sorted(boot["nmi"])),
