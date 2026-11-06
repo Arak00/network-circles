@@ -154,6 +154,13 @@
     ],
     "note": "Pairwise ARI between Leiden runs with seeds 0-9 on the default projection. Shows the partition does not hinge on the seed; says nothing about whether it is correct."
   },
+  "resample": {
+    "n_runs": 20,
+    "frac_kept": 0.9,
+    "ari_mean": 0.9208,
+    "ari_min": 0.8076,
+    "note": "Whole pipeline re-run on a random 90% of the connection rows; ARI against the full run on the people kept. Shows the circles don't hinge on a few connections; says nothing about correctness."
+  },
   "ablation": {
     "n": 300,
     "sets": {
@@ -247,5 +254,6 @@
     "labels": "pending",
     "pairs": "pending"
   },
-  "testers": "pending"
+  "testers": "pending",
+  "circle_check": "pending"
 }

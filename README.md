@@ -12,7 +12,13 @@ uv venv && uv pip install -r requirements.txt
 # or: python -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 
-Request your data from LinkedIn (Settings, Data privacy, Get a copy of your data) and unzip it into a folder. Then either:
+Request your data from LinkedIn (Settings, Data privacy, Get a copy of your data) and unzip it into a folder. Members in the EEA or Switzerland can also pull the same data through LinkedIn's DMA portability API, which needs no partner approval:
+
+```sh
+LINKEDIN_TOKEN=... python src/fetch_snapshot.py data/api    # setup steps are at the top of the script
+```
+
+The script writes export-style CSVs into `data/api/` and prints only row counts and column names. It never requests messages. Then either:
 
 Run it from the command line and view the result:
 
@@ -28,7 +34,7 @@ Or skip the command line:
 
 ```sh
 python -m http.server
-# open http://localhost:8000/web/ and drop Connections.csv and Positions.csv on the page
+# open http://localhost:8000/web/ and drop the export's CSV files on the page
 ```
 
 Opening `/web/` with no file shows the synthetic demo. Drop mode downloads the Pyodide runtime (about 10 MB) from jsDelivr the first time. It doesn't read zip files, so unzip the export first.
@@ -36,11 +42,24 @@ Opening `/web/` with no file shows the synthetic demo. Drop mode downloads the P
 ## Which export files are used
 
 - `Connections.csv` (required): first and last name, current company, title and connected-on date.
-- `Positions.csv` (optional): your own jobs, used only by the optional links that are off by default.
+- `Positions.csv` (optional): your own jobs. They become organisation nodes, and feed optional links that are off by default.
 - `Invitations.csv` and `Recommendations_Received.csv` are loaded if present but don't affect the result yet.
 - An optional `merge_overrides.csv` (`raw,canonical`) in the export folder corrects company merges.
 
-Messages are never read: `netmap.py` doesn't open `messages.csv`. Email addresses and profile URLs from `Connections.csv` are not copied into the output. In the browser, drop only the two files above; any other CSV you drop is copied into the tab's memory and ignored.
+These files add layers around the people. They don't change the circles.
+
+| File | Layer | Linked to |
+|---|---|---|
+| `Skills.csv`, `Endorsement_Received_Info.csv`, `Endorsement_Given_Info.csv` | skills | the connections who endorsed you, or whom you endorsed |
+| `Positions.csv`, `Education.csv`, `Company Follows.csv` | organisations | connections who work there now |
+| `Events.csv` | events | connections you added in the 7 days after |
+| `Shares.csv`, `Comments.csv` | posts | the hashtags and skills they mention (comments only when they mention one) |
+| `Groups.csv` | groups | hashtags and skills in the group name |
+| `Member_Follows.csv` | people you follow | flags connections; the rest hang off "You" |
+
+`Reactions.csv` is only counted, since it doesn't say whose post you reacted to. LinkedIn gives no list of your followers, through the export or any API, so followers can't be shown. The viewer has two layouts. Map places each layer node next to the people it links to. Layers puts each kind in its own column, ordered so that linked nodes sit at similar heights.
+
+Messages are never read: `netmap.py` doesn't open `messages.csv`, and `fetch_snapshot.py` doesn't request the inbox. Email addresses and profile URLs from `Connections.csv` are not copied into the output. In the browser, CSVs other than the ones listed here are copied into the tab's memory and ignored.
 
 ## Privacy
 
@@ -65,7 +84,8 @@ This rewrites `results/metrics.json` with the hand-label section set to `pending
 
 ```
 src/netmap.py       pipeline: load, merge, affiliations, projection, Leiden, graph.json
-src/synth.py        seeded generator for the fictional demo export
+src/fetch_snapshot.py  pulls your own data through the DMA portability API (EEA/Switzerland)
+src/synth.py        seeded generator for the fictional demo export, layer files included
 src/validate.py     validation, writes results/metrics.json (aggregates only)
 web/                viewer (index.html, app.js, vendored sigma.js and graphology)
 demo/               synthetic export, planted truth and its graph.json

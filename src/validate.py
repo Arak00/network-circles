@@ -2,6 +2,7 @@
 
   python src/validate.py run [real_dir|none]     # default real_dir = data (real sections only if it exists)
   python src/validate.py templates data          # results/private/{labels,pairs}.csv for hand labelling
+  python src/validate.py circles data            # results/private/circle_check.csv: 20 people + their circle, mark y/n
 
 stdlib + igraph + netmap only. Deterministic: every random draw is seeded.
 """
@@ -272,6 +273,52 @@ def write_templates(real_dir):
     print(f"wrote labels.csv ({min(50, n)} rows), pairs.csv ({len(picks)} rows) to results/private/")
 
 
+def resample_section(d, runs=20):
+    rs = netmap.resample_ari(d, 0.9, runs)
+    return {"n_runs": runs, "frac_kept": 0.9, "ari_mean": r4(statistics.mean(rs)), "ari_min": r4(min(rs)),
+            "note": "Whole pipeline re-run on a random 90% of the connection rows; ARI against the full run on the "
+                    "people kept. Shows the circles don't hinge on a few connections; says nothing about correctness."}
+
+
+# ---------- circle check: is each sampled person in the right circle? ----------
+CHECK = os.path.join(PRIV, "circle_check.csv")
+
+
+def write_circle_check(real_dir, n=20):
+    if os.path.exists(CHECK):
+        sys.exit(f"refusing to overwrite existing {CHECK}")
+    df, g, _ = netmap.build(real_dir)
+    memb, _ = netmap.cluster(g, 0)
+    label = {c["id"]: c["label"] for c in netmap.summarise(df, g, memb)}
+    rng, by = random.Random(11), {}
+    for i, c in enumerate(memb):
+        by.setdefault(c, []).append(i)
+    pools = [rng.sample(v, len(v)) for _, v in sorted(by.items(), key=lambda kv: (kv[0] < 0, kv[0]))]
+    picks = []  # round-robin over circles (unplaced last), so small circles get checked too
+    while len(picks) < min(n, len(memb)):
+        for pool in pools:
+            if pool and len(picks) < n:
+                picks.append(pool.pop())
+    os.makedirs(PRIV, exist_ok=True)
+    with open(CHECK, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["id", "name", "company", "circle", "right"])
+        for i in sorted(picks):
+            w.writerow([i, df["name"].iloc[i], df["company"].iloc[i], label[memb[i]], ""])
+    print(f"wrote {len(picks)} rows to {os.path.relpath(CHECK, ROOT)}. In 'right' put y (right circle; for "
+          f"'unplaced': right that they're in none) or n, then run: python src/validate.py run")
+
+
+def circle_check_section():
+    rows = [r for r in read_csv(CHECK) or [] if (r.get("right") or "").strip().lower()[:1] in ("y", "n")]
+    if not rows:
+        return PENDING
+    k = sum(r["right"].strip().lower().startswith("y") for r in rows)
+    return {"n": len(rows), "share_right": r4(k / len(rows)), "ci95": wilson(k, len(rows)),
+            "note": "The author marked whether each sampled connection sits in the right circle. Circles sampled "
+                    "round-robin; Wilson 95% interval. One person's judgement on one export."}
+
+
 # ---------- 7. testers ----------
 def testers_section():
     rows = read_csv(os.path.join(ROOT, "docs", "tester-feedback.csv"))
@@ -295,6 +342,7 @@ def run(real_dir):
          "the synthetic demo export. Real-export aggregates stay in results/private/metrics_real.json (gitignored); "
          "only the hand-label agreement scores are published here.",
          "snap": snap_section(), "null_model": null_model(g, memb), "stability": stability(g),
+         "resample": resample_section(os.path.join(DEMO, "data")),
          "ablation": ablation(df, truth_scorer), "synthetic_recovery": rec, "hand_labels": PENDING,
          "testers": testers_section()}
     if real_dir and os.path.isdir(real_dir):
@@ -302,9 +350,10 @@ def run(real_dir):
         rm, _ = netmap.cluster(rg, 0)
         sizes = sorted(Counter(x for x in rm if x >= 0).values(), reverse=True)
         m["hand_labels"] = hand_labels_section(rm)
+        m["circle_check"] = circle_check_section()
         real = {"n": len(rdf), "n_edges": rg.ecount(), "n_clusters": len(sizes),
                      "share_unplaced": r4(rm.count(-1) / len(rm)), "cluster_sizes": sizes,
-                     "null_model": null_model(rg, rm), "stability": stability(rg),
+                     "null_model": null_model(rg, rm), "stability": stability(rg), "resample": resample_section(real_dir),
                      "ablation": ablation(rdf, hand_label_scorer),
                      "note": "The author's own export, aggregates only. No ground truth beyond hand labels."}
         os.makedirs(PRIV, exist_ok=True)
@@ -322,6 +371,8 @@ if __name__ == "__main__":
     if a[:1] == ["run"]:
         d = a[1] if len(a) > 1 else os.path.join(ROOT, "data")
         run(None if d.lower() == "none" else d)
+    elif a[:1] == ["circles"] and len(a) == 2:
+        write_circle_check(a[1])
     elif a[:1] == ["templates"] and len(a) == 2:
         write_templates(a[1])
     else:

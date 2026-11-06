@@ -39,13 +39,13 @@ ROLE_RE = [(fam, re.compile(r"\b(?:" + "|".join(t + r"\b" if len(t) <= 3 else t 
 
 
 # ---------- 1. load ----------
-def read_export_csv(path):
-    """Rows -> DataFrame. Header = first row with >2 fields (skips the 'Notes:' preamble)."""
+def read_export_csv(path, min_fields=3):
+    """Rows -> DataFrame. Header = first row with >= min_fields fields (skips the 'Notes:' preamble)."""
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8-sig", newline="") as f:
         rows = list(csv.reader(f))
-    hi = next((i for i, r in enumerate(rows) if len(r) > 2), None)
+    hi = next((i for i, r in enumerate(rows) if len(r) >= min_fields and any(c.strip() for c in r)), None)
     if hi is None:
         return None
     head = [h.strip() for h in rows[hi]]
@@ -104,6 +104,13 @@ def merge(names, cutoff=0.88, overrides=None):
     by_key = defaultdict(Counter)
     for raw, c in raw_counts.items():
         by_key[clean(raw)][raw] += c
+    # Words shared by many different names ("international", "holdings", "group") say nothing about which company
+    # it is, yet a long shared suffix can lift the whole-string ratio past the cutoff ("Alpha International Holdings
+    # Group Ltd" ~ "Beta International Holdings Group Ltd"). So a match must also hold on the distinctive words.
+    # This only ever removes merges; names made only of common words fall back to the whole-string score.
+    df_tok = Counter(t for k in by_key for t in set(k.split()))
+    common = {t for t, c in df_tok.items() if c >= 3 and c >= 0.02 * len(by_key)}
+    core = {k: " ".join(t for t in k.split() if t not in common) for k in by_key}
     reps, members = [], defaultdict(list)  # rep clean key -> [(clean key, score)]
     for key in sorted(by_key, key=lambda k: (-sum(by_key[k].values()), k)):
         best, score = None, 0.0
@@ -111,6 +118,8 @@ def merge(names, cutoff=0.88, overrides=None):
             sm = difflib.SequenceMatcher(None, key, r)
             if sm.real_quick_ratio() >= cutoff and sm.quick_ratio() >= cutoff:
                 s = sm.ratio()
+                if core[key] and core[r] and core[key] != core[r] and ratio(core[key], core[r]) < cutoff:
+                    continue
                 if s > score:
                     best, score = r, s
         if best is None or score < cutoff:
@@ -254,6 +263,24 @@ def cluster(g, seed=0, resolution=1.0):
     return [order[c] if d > 0 else -1 for c, d in zip(raw, deg)], q
 
 
+def resample_ari(input_dir, frac=0.9, runs=10, seed=0):
+    """Re-run the whole pipeline on a random `frac` of the raw connection rows; ARI of each run against the full run,
+    on the people kept (unplaced people count as singletons). High = circles don't hinge on a few connections."""
+    data = load(input_dir)
+    ov = read_overrides(input_dir)
+    full, _ = cluster(project(people(data, overrides=ov)[0]))
+    conn, rng, out = data["connections"], random.Random(seed), []
+    def canon(ms):  # compact 0..k ids, -1 (unplaced) -> one singleton each
+        ids = {}
+        return [ids.setdefault(("solo", i) if c == -1 else c, len(ids)) for i, c in enumerate(ms)]
+    for _ in range(runs):
+        keep = sorted(rng.sample(range(len(conn)), int(frac * len(conn))))
+        sub = people(dict(data, connections=conn.iloc[keep].reset_index(drop=True)), overrides=ov)[0]
+        m, _ = cluster(project(sub))
+        out.append(ig.compare_communities(canon([full[i] for i in keep]), canon(m), method="ari"))
+    return out
+
+
 # ---------- 6. output ----------
 def summarise(df, g, memb):
     internal, incident = Counter(), Counter()
@@ -279,6 +306,166 @@ def summarise(df, g, memb):
     return out
 
 
+# ---------- 7. layers: skills, orgs, events, groups, posts, topics, follows ----------
+# Export file names; the API fetcher (fetch_snapshot.py) writes the same names. Every file is optional.
+# Column names differ between the zip export and the API, so each lookup lists the known spellings.
+def col(df, *names):
+    if df is None:
+        return None
+    norm = {re.sub(r"[^a-z]", "", c.lower()): c for c in df.columns}
+    return next((norm[k] for k in (re.sub(r"[^a-z]", "", n.lower()) for n in names) if k in norm), None)
+
+
+def any_date(s):
+    """Loose date parser for the many export/API formats -> date or None."""
+    s = str(s or "").strip()
+    m = re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", s)
+    if m:
+        return datetime(*map(int, m.groups())).date()
+    m = re.search(r"\b([A-Z][a-z]{2})[a-z]* (\d{1,2})\b.*?\b(\d{4})\b", s)  # "Thu Jan 05 10:00:00 UTC 2023", "Jan 5, 2023"
+    d = parse_date(f"{m[2]} {m[1]} {m[3]}", ("%d %b %Y",)) if m else None
+    d = d or parse_date(s, ("%d %b %Y", "%m/%d/%y", "%m/%d/%Y", "%b %Y", "%Y"))
+    return d.date() if d else None
+
+
+HASHTAG = re.compile(r"#(\w{2,40})")
+
+
+def layers(d, df):
+    """Heterogeneous layer around the people graph: {"nodes": [...], "edges": [...], "counts": {...}}.
+    Person ends of edges are person ids (int); other nodes have string ids "<kind>:<key>"."""
+    rd = lambda name: read_export_csv(os.path.join(d, name), min_fields=1)
+    nodes, acc = {}, Counter()
+    who = {n.lower(): i for i, n in zip(df["id"], df["name"]) if n}
+
+    def node(kind, label, **extra):
+        label = re.sub(r"\s+", " ", str(label or "")).strip()
+        if not label:
+            return None
+        k = f"{kind}:{label.lower()}"
+        if k not in nodes:
+            nodes[k] = {"id": k, "kind": kind, "label": label}
+        nodes[k].update({a: b for a, b in extra.items() if b is not None and a not in nodes[k]})
+        return k
+
+    def link(a, b, kind, w=1.0):
+        if a is not None and b is not None and a != b:
+            acc[(a, b, kind)] += w
+
+    def rows(df_, *cols):
+        if df_ is None:
+            return []
+        cs = [col(df_, *c) if isinstance(c, tuple) else col(df_, c) for c in cols]
+        return [[(r[c] if c else "") for c in cs] for r in df_.to_dict("records")]
+
+    # skills + endorsements (the only new data that names other people)
+    for (name,) in rows(rd("Skills.csv"), ("Name", "Skill Name", "Skill")):
+        node("skill", name, how="on your profile")
+    for f in ("Endorsement_Received_Info.csv", "Endorsements.csv"):
+        for sk, fn, ln, when in rows(rd(f), ("Skill Name", "Skill"), "Endorser First Name", "Endorser Last Name", ("Endorsement Date", "Date")):
+            p = who.get(f"{fn} {ln}".strip().lower())
+            if fn and sk:
+                s = node("skill", sk, how="endorsed on your profile")
+                if p is not None:
+                    link(p, s, "endorsed you for")
+                else:  # endorser is not a 1st-degree connection: count only
+                    nodes[s]["outside"] = nodes[s].get("outside", 0) + 1
+    for f in ("Endorsement_Given_Info.csv", "Endorsements.csv"):
+        for sk, fn, ln in rows(rd(f), ("Skill Name", "Skill"), "Endorsee First Name", "Endorsee Last Name"):
+            p = who.get(f"{fn} {ln}".strip().lower())
+            if p is not None and sk:
+                link(p, node("skill", sk, how="you endorsed someone for it"), "you endorsed for")
+
+    # organisations: your employers, schools, followed companies -> people currently there
+    orgs = [(c, "you worked here") for (c,) in rows(rd("Positions.csv"), "Company Name")]
+    orgs += [(c, "you studied here") for (c,) in rows(rd("Education.csv"), ("School Name", "School"))]
+    orgs += [(c, "you follow it") for c, _ in rows(rd("Company Follows.csv"), ("Organization", "Company", "Name"), ("Followed On", "Date"))]
+    by_co = defaultdict(list)
+    for i, co in zip(df["id"], df["company"]):
+        if co:
+            by_co[clean(co)].append(i)
+    for name, how in orgs:
+        o, ck = node("org", name, how=how), clean(name)
+        if o and ck:
+            hit = max(by_co, key=lambda k: ratio(ck, k), default=None)
+            for p in (by_co[hit] if hit is not None and ratio(ck, hit) >= 0.88 else []):
+                link(p, o, "works at")
+
+    # events -> people you connected with in the week after
+    dated = [(i, c.date()) for i, c in zip(df["id"], df["connected_on"]) if c is not None]
+    for name, when in rows(rd("Events.csv"), ("Event Name", "Name", "Title"), ("Event Time", "Date", "Start Date")):
+        day = any_date(when)
+        e = node("event", name, date=day.isoformat() if day else None)
+        for i, c in dated if day else []:
+            if 0 <= (c - day).days <= 7:
+                link(i, e, "connected after")
+
+    # posts and comments -> hashtags (topics) and skills they mention
+    skill_rx = {k: re.compile(r"(?<!\w)" + re.escape(v["label"]) + r"(?!\w)", re.I)
+                for k, v in nodes.items() if v["kind"] == "skill" and len(v["label"]) >= 2}
+
+    def mentions(src, text):
+        for t in HASHTAG.findall(text):
+            link(src, node("topic", "#" + t.lower()), "tagged")
+        for k, rx in skill_rx.items():
+            if rx.search(text):
+                link(src, k, "mentions")
+
+    n_posts = 0
+    for when, text in rows(rd("Shares.csv"), "Date", ("ShareCommentary", "Commentary", "Text")):
+        text, day = str(text or "").strip(), any_date(when)
+        if text:
+            n_posts += 1
+            p = node("post", f"{(day or '')} {text[:48]}…" if len(text) > 48 else f"{(day or '')} {text}",
+                     date=day.isoformat() if day else None, text=text[:280], how="your post")
+            mentions(p, text)
+    for when, text in rows(rd("Comments.csv"), "Date", ("Message", "Comment", "Text")):
+        text, day = str(text or "").strip(), any_date(when)
+        if HASHTAG.search(text) or any(rx.search(text) for rx in skill_rx.values()):  # unlinked comments add nothing
+            p = node("post", f"{(day or '')} {text[:48]}…" if len(text) > 48 else f"{(day or '')} {text}",
+                     date=day.isoformat() if day else None, text=text[:280], how="your comment")
+            mentions(p, text)
+
+    # groups -> topics/skills their name mentions
+    for (name,) in rows(rd("Groups.csv"), ("Title", "Group Name", "Name")):
+        g = node("group", name, how="you are a member")
+        if g:
+            words = set(re.findall(r"\w+", name.lower()))
+            for k, v in list(nodes.items()):
+                if (v["kind"] == "topic" and v["label"][1:] in words) or (k in skill_rx and skill_rx[k].search(name)):
+                    link(g, k, "about")
+
+    # people you follow: flag connections, add the rest as their own nodes
+    followed = set()
+    for (name,) in rows(rd("Member_Follows.csv"), ("FullName", "Full Name", "Name")):
+        p = who.get(str(name).strip().lower())
+        followed.add(p) if p is not None else node("follow", name, how="you follow them, not connected")
+
+    # recommendations: a direct tie to you
+    for f, kind in (("Recommendations_Received.csv", "recommended you"), ("Recommendations_Given.csv", "you recommended"),
+                    ("Recommendations.csv", "recommendation")):  # API: given and received mixed, direction unknown
+        for fn, ln in rows(rd(f), "First Name", "Last Name"):
+            p = who.get(f"{fn} {ln}".strip().lower())
+            if p is not None:
+                link(p, "you", kind)
+
+    # anything with no other link hangs off "you", so nothing floats
+    linked = {x for a, b, _ in acc for x in (a, b)}
+    for k in nodes:
+        if k not in linked:
+            link(k, "you", "yours")
+    if any("you" in (a, b) for a, b, _ in acc):
+        nodes["you"] = {"id": "you", "kind": "you", "label": "You"}
+    kinds = Counter(v["kind"] for v in nodes.values())
+    reacts = rd("Reactions.csv")
+    return {
+        "nodes": list(nodes.values()),
+        "edges": [{"s": a, "t": b, "kind": k, "w": w} for (a, b, k), w in sorted(acc.items(), key=str)],
+        "followed": sorted(int(x) for x in followed),
+        "counts": {**kinds, "posts": n_posts, "reactions": 0 if reacts is None else len(reacts)},
+    }
+
+
 def run(input_dir, weights=None, seed=0, resolution=1.0, cutoff=0.88):
     W = dict(DEFAULT_W if weights is None else weights)
     df, g, merges = build(input_dir, W, cutoff)
@@ -295,6 +482,7 @@ def run(input_dir, weights=None, seed=0, resolution=1.0, cutoff=0.88):
         "edges": [{"s": e.source, "t": e.target, "w": round(e["weight"], 4)} for e in g.es],
         "clusters": clusters,
         "merges": [{"raw": r, "canonical": c, "score": s} for r, c, s in merges],
+        "layers": layers(input_dir, df),
     }
 
 
@@ -318,19 +506,46 @@ def selftest():
         w.writerow(["Company Name", "Title", "Description", "Location", "Started On", "Finished On"])
         w.writerow(["Initech", "Engineer", "", "", "Jan 2020", ""])
         w.writerow(["Old Co", "Intern", "", "", "2015", "Jun 2016"])
+    for name, head, body in [
+        ("Skills.csv", ["Name"], [["Python"], ["Forecasting"]]),
+        ("Endorsement_Received_Info.csv", ["Endorsement Date", "Skill Name", "Endorser First Name", "Endorser Last Name"],
+         [["2024/01/02 10:00:00 UTC", "Python", "P0", "Test"], ["2024/01/02 10:00:00 UTC", "Python", "Not", "Connected"]]),
+        ("Company Follows.csv", ["Organization", "Followed On"], [["Globex Corporation", "Thu Jan 05 10:00:00 UTC 2023"]]),
+        ("Events.csv", ["Event Name", "Event Time"], [["Expo", "Oct 12, 2025, 9:00 AM"]]),
+        ("Shares.csv", ["Date", "ShareCommentary"], [["2024-03-01 10:00:00", "Shipping #forecasting work in python"]]),
+        ("Groups.csv", ["Title"], [["Forecasting Guild"], ["Quiet Club"]]),
+    ]:
+        with open(os.path.join(d, name), "w", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerows([head] + body)
     data = load(d)
     assert len(data["connections"]) == len(rows) and "Connected On" in data["connections"].columns, "header scan"
     assert data["invitations"] is None, "optional files tolerated"
     mapping, merges = merge(["Acme Inc.", "ACME", "Acme", "Acme", "Globex"])
     assert mapping["Acme Inc."] == mapping["ACME"] == "Acme", mapping
     assert all(r != c for r, c, _ in merges)
+    tail = " International Holdings Group Limited (EMEA Operations Division)"  # long shared suffix must not merge
+    mapping, _ = merge([f"{w}{tail}" for w in ("Alpha", "Beta", "Gamma", "Delta")] + ["Acme Inc.", "ACME"])
+    assert len({mapping[f"{w}{tail}"] for w in ("Alpha", "Beta", "Gamma", "Delta")}) == 4 and mapping["ACME"] == mapping["Acme Inc."], mapping
     out = run(d)
     truth = [cos[co] for co, _ in rows if co in cos]
     got = [n["cluster"] for n, (co, _) in zip(out["nodes"], rows) if co in cos]
     ari = ig.compare_communities(truth, got, method="ari")
     assert abs(ari - 1.0) < 1e-9, ("ARI", ari, got)
     assert any(a.startswith("ego:") for a in people(data)[0]["affs"].iloc[-6]), "ego affiliation"
-    print(f"selftest ok: ARI={ari}, clusters={out['meta']['n_clusters']}, edges={out['meta']['n_edges']}")
+    L = out["layers"]
+    E = {(e["s"], e["t"], e["kind"]) for e in L["edges"]}
+    assert (0, "skill:python", "endorsed you for") in E, "endorsement -> person-skill edge"
+    assert sum(1 for e in E if e[1] == "org:globex corporation" and e[2] == "works at") == 5, "followed org -> its people"
+    assert sum(1 for e in E if e[1] == "event:expo") == len(rows), "event -> people connected that week"
+    post = next(n["id"] for n in L["nodes"] if n["kind"] == "post")
+    assert {(post, "topic:#forecasting", "tagged"), (post, "skill:python", "mentions")} <= E, "post -> topic, skill"
+    assert ("group:forecasting guild", "topic:#forecasting", "about") in E and ("group:quiet club", "you", "yours") in E
+    assert any_date("Thu Jan 05 10:00:00 UTC 2023").isoformat() == "2023-01-05" and any_date("Oct 12, 2025, 9:00 AM").day == 12
+    demo = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo", "data")
+    rs = resample_ari(demo, frac=0.9, runs=5)  # synthetic demo; measured mean 0.92 over 10 runs
+    assert sum(rs) / len(rs) >= 0.8, ("circles unstable when 10% of connections are dropped", rs)
+    print(f"selftest ok: ARI={ari}, clusters={out['meta']['n_clusters']}, edges={out['meta']['n_edges']}, "
+          f"resample ARI (90%, 5 runs, demo) mean={sum(rs) / len(rs):.3f} min={min(rs):.3f}")
 
 
 if __name__ == "__main__":
@@ -347,5 +562,6 @@ if __name__ == "__main__":
         m = res["meta"]
         print(f"people={m['n_people']} edges={m['n_edges']} clusters={m['n_clusters']} "
               f"unplaced={m['share_unplaced']} modularity={m['modularity']} merges={len(res['merges'])}")
+        print("layers: " + " ".join(f"{k}={v}" for k, v in sorted(res["layers"]["counts"].items())))
     else:
         sys.exit(__doc__)

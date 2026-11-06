@@ -9,19 +9,19 @@
 /* Layout: full-height tool. Map left, cluster panel right, timeline under the map. Stacks on phones. */
 :root {
   --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964;
-  --line: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6; --focus: #2a78d6;
-  --edge: #dddcd6; --err: #c0392f; --bar: #c3c2b7; --banner: #eef3fa;
-  --small: #8a887f; --unplaced: #c3c2b7;
+  --line: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6; --link: #266fc7; --focus: #2a78d6;
+  --edge: #e6e5df; --err: #c0392f; --bar: #c3c2b7; --banner: #eef3fa;
+  --small: #8a887f; --unplaced: #c3c2b7; --layer: #2b2a27; --layer-edge: #cfcec6; --dim: #e9e8e3; --edge-focus: #8a887f;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
-  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --focus: #6da7ec;
-  --edge: #353533; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; color-scheme: dark } }
+  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec;
+  --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
-  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --focus: #6da7ec;
-  --edge: #353533; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; color-scheme: dark }
+  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec;
+  --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
 .app { display: grid; grid-template-rows: auto auto 1fr; height: 100%; box-sizing: border-box;
@@ -77,9 +77,36 @@ button[aria-pressed="true"] .sw { border-radius: 3px; }
 #legend details { padding: 0 6px 4px 26px; font-size: 12px; color: var(--ink-2); }
 #legend details ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
 #legend summary { cursor: pointer; color: var(--muted); }
+.seg { display: flex; gap: 4px; margin-bottom: 6px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+#kinds { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+#kinds label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+#kinds .num { margin-left: auto; }
+#layersCard[hidden] { display: none; }
+header .how { margin-left: auto; }
+.link { background: none; border: none; padding: 0; color: var(--link);  /* text: 4.5:1, darker than --accent */ text-decoration: underline; text-underline-offset: 2px; }
+.tools { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 8px; z-index: 2; pointer-events: none; }
+.tools > * { pointer-events: auto; }
+.tools .seg { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.tools .seg button { border: none; }
+.tools .seg[hidden] { display: none; }
+#find { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px;
+  width: 280px; min-width: 0; flex: 0 1 auto; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.hintbar { position: absolute; bottom: 8px; left: 12px; right: 12px; margin: 0; font-size: 11px; color: var(--muted); pointer-events: none; z-index: 1; }
+details.card > summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+details.card[open] > summary { margin-bottom: 6px; }
+dialog { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0 0 10px; }
+dialog h3 { font-size: 13px; margin: 14px 0 4px; }
+dialog ol, dialog ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--ink-2); }
+dialog .row { display: flex; justify-content: flex-end; margin-top: 16px; }
+dialog .primary, #pick { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 #empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-2); padding: 16px; text-align: center; }
 #empty[hidden] { display: none; }
 #canvas, #canvas > div { position: absolute; inset: 0; }
+#canvas { top: 50px; bottom: 22px; }  /* below the toolbar, above the hint line */
 .timeline[hidden] { display: none; }  /* sigma owns this box; kill() empties it */
 #status.err { color: var(--err); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -98,18 +125,51 @@ button[aria-pressed="true"] .sw { border-radius: 3px; }
 <div class="app">
   <header>
     <h1>Network Circles</h1>
-    <p class="sub">Where your LinkedIn connections come from, grouped by shared companies and timing.</p>
+    <p class="sub">The circles your LinkedIn network is made of, and the skills, companies and groups around them.</p>
     <p class="src" id="source">Loading…</p>
+    <button type="button" class="link how" id="howBtn">How it works</button>
   </header>
   <div id="drop">
-    <button type="button" id="pick">Open your export</button>
+    <button type="button" id="pick">Open your LinkedIn files</button>
     <input id="files" type="file" multiple accept=".csv" class="vh" tabindex="-1" aria-label="LinkedIn export CSV files">
-    <p>Choose or drop Connections.csv and Positions.csv anywhere on the page (unzip the export first). Libraries download from a CDN; your files are read inside this tab and never uploaded.</p>
+    <p>Or drop the unzipped CSV files anywhere on this page. They are read inside this tab and never uploaded.</p>
     <p id="status" role="status"></p>
   </div>
+  <dialog id="how" aria-labelledby="howTitle">
+    <h2 id="howTitle">How Network Circles works</h2>
+    <h3>1. Get your files from LinkedIn</h3>
+    <ol>
+      <li>On LinkedIn, open <b>Settings → Data privacy → Get a copy of your data</b>.</li>
+      <li>Choose <b>the larger data archive</b>. The smaller one has no skills, endorsements or posts.</li>
+      <li>LinkedIn emails you a link within a day. Download the zip and unzip it.</li>
+    </ol>
+    <h3>2. Open them here</h3>
+    <ul>
+      <li>Click <b>Open your LinkedIn files</b> and select all the CSV files, or drop them on the page.</li>
+      <li>Everything runs in this browser tab. Nothing is uploaded or stored.</li>
+    </ul>
+    <h3>3. Read the map</h3>
+    <ul>
+      <li>Each dot is a connection. Colours are <b>circles</b>: people linked by a shared company or added around the same days.</li>
+      <li><b>Hover</b> anything to see what it connects to. <b>Click</b> to keep it highlighted, click the background to let go.</li>
+      <li><b>Layers</b> lines up your groups, topics, posts and skills on the left and organisations and events on the right of your circles.</li>
+      <li>Drag the timeline or press <b>Play</b> to watch your network grow.</li>
+    </ul>
+    <form method="dialog" class="row"><button class="primary">Got it</button></form>
+  </dialog>
   <main>
     <section class="stage" aria-label="Network map">
-      <div id="graph" role="img" aria-label="Network map of connections, coloured by cluster"><div id="tip" hidden></div><p id="empty">Loading the demo network…</p><div id="canvas"></div></div>
+      <div id="graph"><div id="tip" hidden></div>
+        <div class="tools">
+          <div class="seg" id="viewSwitch" role="group" aria-label="Layout" hidden>
+            <button type="button" id="vMap" aria-pressed="true">Map</button>
+            <button type="button" id="vLayers" aria-pressed="false">Layers</button>
+          </div>
+          <input id="find" type="search" list="findList" placeholder="Find a person, skill or company" aria-label="Find a person, skill or company" autocomplete="off">
+          <datalist id="findList"></datalist>
+        </div>
+        <p class="hintbar">Hover to see links · click to pin · scroll to zoom</p><p id="empty">Loading the demo network…</p><div id="canvas" role="img" aria-label="Network map of your connections, coloured by circle. Use the find box or the circle list to explore it by keyboard."></div>
+        <p id="live" class="vh" aria-live="polite"></p></div>
       <div class="timeline">
         <button id="play" type="button" aria-describedby="motionNote" disabled>Play</button>
         <div>
@@ -125,14 +185,18 @@ button[aria-pressed="true"] .sw { border-radius: 3px; }
     <aside>
       <div class="card">
         <h2>Circles</h2>
-        <p class="hint">Click a circle to fold its people into one node. Labels are generated: top company and top role.</p>
+        <p class="hint">Click one to fold its people into a single dot. Names are generated from the top company and role.</p>
         <div class="lhead" aria-hidden="true"><span>Circle</span><span>people · cohesion</span></div>
         <ul id="legend"></ul>
       </div>
-      <div class="card">
-        <h2>How far to trust this</h2>
-        <ul class="meta" id="meta"></ul>
+      <div class="card" id="layersCard" hidden>
+        <h2>Show</h2>
+        <ul id="kinds"></ul>
       </div>
+      <details class="card">
+        <summary>How far to trust this</summary>
+        <ul class="meta" id="meta"></ul>
+      </details>
     </aside>
   </main>
 </div>

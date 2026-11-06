@@ -2,7 +2,7 @@
 """Fictional LinkedIn export for the public demo (stdlib only, seeded, no real people or companies).
 Usage: python src/synth.py [--check data]  ->  demo/data/{Connections,Positions}.csv + demo/truth.csv"""
 import csv, os, random, sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREAMBLE = 'Notes:\n"When exporting your connection data, you may notice that some of the email addresses are missing. You will only see email addresses for connections who have allowed their connections to see or download their email address using this setting https://www.linkedin.com/psettings/privacy/email. You can learn more here https://www.linkedin.com/help/linkedin/answer/261"\n\n'
@@ -58,21 +58,25 @@ MEETUPS = [date(2018, 3, 15), date(2019, 5, 22), date(2022, 10, 12), date(2023, 
 END = date(2026, 10, 30)
 
 
-def gen(seed=42, bad=frozenset()):
-    """Return (rows, truth, positions). `bad` holds lowercased names/companies to avoid (privacy collisions)."""
+def gen(seed=42, bad=frozenset(), scale=1.0):
+    """Return (rows, truth, positions). `bad` holds lowercased names/companies to avoid (privacy collisions).
+    `scale` multiplies every group size (tests/grid.py); scale 1 draws exactly the published demo."""
     rng = random.Random(seed)
+    n = lambda k: max(1, round(k * scale))
     ok = lambda s: s.lower() not in bad and not any(d in s.lower() for d in DENY)
     firsts, lasts = [f for f in FIRST if ok(f)], [l for l in LAST if ok(l)]
     used_co, used_names = set(VARIANTS) | set(AGENCIES) | {p[0] for p in EGO}, set()
 
     def fresh():  # a never-used fictional company -> singleton
-        while True:
+        for tries in range(10**6):
             c = f'{rng.choice(W1)} {rng.choice(W2)}'
+            if tries > 60:  # ~975 two-word names run out at large scales; never reached at scale 1
+                c += f' {rng.randrange(2, 10**4)}'
             if c not in used_co and ok(c):
                 used_co.add(c)
                 return c
-    moved = [fresh() for _ in range(22)]  # where people move on to; zipf-ish, so small shared groups form
-    meet = [fresh() for _ in range(12)]
+    moved = [fresh() for _ in range(n(22))]  # where people move on to; zipf-ish, so small shared groups form
+    meet = [fresh() for _ in range(n(12))]
     pick = lambda pool: rng.choices(pool, weights=[1 / (i + 3) for i in range(len(pool))])[0]
 
     def anchor(base):
@@ -93,34 +97,34 @@ def gen(seed=42, bad=frozenset()):
         return circle, [f, l, url, email, company, rng.choice(TITLES[kind]), min(when, END)]
 
     out = []
-    def era(base, n, stay, s, e, burst_share, circle):  # colleagues; burst right after joining
-        for _ in range(n):
+    def era(base, k, stay, s, e, burst_share, circle):  # colleagues; burst right after joining
+        for _ in range(n(k)):
             co = anchor(base) if rng.random() < stay else (pick(moved) if rng.random() < 0.8 else fresh())
             when = day(s, s + timedelta(days=26)) if rng.random() < burst_share else day(s, e)
             out.append(person(circle, co, 'colleague', when))
     era('Brightwater Analytics', 15, 0.2, date(2016, 8, 1), date(2019, 2, 1), 0.3, 'early_employer')
     era('Northwind Labs', 50, 0.45, date(2021, 1, 4), date(2023, 6, 30), 0.4, 'former_employer')
     era('Ashgrove Mobility', 45, 0.9, date(2024, 9, 2), END, 0.6, 'current_employer')
-    for _ in range(30):  # university cohort: connected around graduation, now everywhere
+    for _ in range(n(30)):  # university cohort: connected around graduation, now everywhere
         r = rng.random()
         co = anchor('Lakemoor University') if r < 0.15 else (pick(moved) if r < 0.75 else fresh())
         when = day(date(2016, 5, 20), date(2016, 7, 15)) if rng.random() < 0.5 else day(date(2016, 1, 1), date(2018, 6, 1))
         out.append(person('university', co, 'uni', when))
-    for _ in range(35):  # meetup scene: bursts in the week after each event
+    for _ in range(n(35)):  # meetup scene: bursts in the week after each event
         co = pick(meet) if rng.random() < 0.75 else fresh()
         ev = rng.choice(MEETUPS)
         out.append(person('meetup', co, 'meetup', ev + timedelta(days=rng.randrange(8))))
-    for _ in range(20):  # client during the Tidewell era, kickoff burst Oct 2023
+    for _ in range(n(20)):  # client during the Tidewell era, kickoff burst Oct 2023
         co = anchor('Halcyon Freight') if rng.random() < 0.8 else fresh()
         when = day(date(2023, 10, 2), date(2023, 10, 20)) if rng.random() < 0.5 else day(date(2023, 7, 1), date(2024, 8, 31))
         out.append(person('client', co, 'client', when))
-    for _ in range(25):  # recruiters: agencies (shared) or in-house at singletons, around job changes
+    for _ in range(n(25)):  # recruiters: agencies (shared) or in-house at singletons, around job changes
         co = rng.choice(AGENCIES) if rng.random() < 0.6 else fresh()
         p = rng.choice(EGO[1:])[2]
         when = day(p - timedelta(days=120), p) if rng.random() < 0.6 else day(date(2017, 1, 1), END)
         out.append(person('recruiters', co, 'recruiter', when))
     seen = []
-    for _ in range(80):  # background noise: mostly singletons (some pairs), steady trickle weighted to recent years
+    for _ in range(n(80)):  # background noise: mostly singletons (some pairs), steady trickle weighted to recent years
         co = rng.choice(seen) if seen and rng.random() < 0.3 else fresh()
         seen.append(co)
         y = rng.choices(range(2016, 2027), weights=range(1, 12))[0]
@@ -147,6 +151,71 @@ def write(rows, truth, pos, out=os.path.join(ROOT, 'demo')):
         w = csv.writer(f, lineterminator='\n')
         w.writerow(['id', 'circle'])
         w.writerows(enumerate(truth))
+    for name, (head, body) in gen_layers(rows, truth).items():
+        with open(os.path.join(out, 'data', name), 'w', newline='', encoding='utf-8') as f:
+            w = csv.writer(f, lineterminator='\n')
+            w.writerow(head)
+            w.writerows(body)
+
+
+# Layer data (skills, endorsements, follows, events, groups, posts). Own RNG so Connections.csv and metrics don't move.
+SKILLS = {'early_employer': ['SQL', 'Forecasting', 'Data Analysis'], 'former_employer': ['Product Management', 'Experimentation', 'Roadmapping'],
+          'current_employer': ['Product Strategy', 'Electrification', 'Roadmapping'], 'university': ['Statistics', 'Data Analysis'],
+          'meetup': ['Machine Learning', 'Python', 'Statistics'], 'client': ['Logistics', 'Stakeholder Management'],
+          'recruiters': [], 'noise': ['Leadership']}
+GROUPS = ['Product Analytics Circle', 'Fleet Electrification Forum', 'Lakemoor University Alumni', 'Machine Learning Practitioners',
+          'Logistics Leaders Network', 'Weekend Cyclists']
+TAGS = ['productmanagement', 'electrification', 'machinelearning', 'logistics', 'experimentation', 'hiring']
+POSTS = ['What we learned shipping {s} at scale #{t}', 'Three mistakes I made with {s} this year #{t}',
+         'Notes from the meetup: {s} and why it matters #{t} #{u}', 'We are hiring! Looking for people who love {s} #hiring',
+         'A short thread on {s} for fleet teams #{t}']
+
+
+def gen_layers(rows, truth, seed=7):
+    """-> {file name: (header, rows)} built on the demo connections."""
+    rng = random.Random(seed)
+    stamp = lambda d: d.strftime('%Y/%m/%d %H:%M:%S UTC')
+    skills = sorted({k for v in SKILLS.values() for k in v})
+    rec, given = [], []
+    for r, c in zip(rows, truth):
+        when = datetime.strptime(r[6], '%d %b %Y').date()
+        for sk in SKILLS[c]:
+            if rng.random() < 0.35:
+                rec.append([stamp(when + timedelta(days=rng.randrange(30, 700))), sk, r[0], r[1], r[2], 'ACCEPTED'])
+            if rng.random() < 0.06:
+                given.append([stamp(when + timedelta(days=rng.randrange(30, 700))), sk, r[0], r[1], r[2], 'ACCEPTED'])
+    for _ in range(12):  # endorsements from people outside the 1st-degree network
+        rec.append([stamp(date(2022, 1, 1) + timedelta(days=rng.randrange(1400))), rng.choice(skills), rng.choice(FIRST), 'Outsider', '', 'ACCEPTED'])
+    shares, comments = [], []
+    for k in range(28):
+        sk, t, u = rng.choice(skills), rng.choice(TAGS), rng.choice(TAGS)
+        d = date(2019, 1, 1) + timedelta(days=rng.randrange((END - date(2019, 1, 1)).days))
+        shares.append([d.strftime('%Y-%m-%d %H:%M:%S'), f'https://www.linkedin.com/feed/update/urn:li:share:{k}', rng.choice(POSTS).format(s=sk, t=t, u=u), '', '', 'MEMBER_NETWORK'])
+    for k in range(40):
+        d = date(2020, 1, 1) + timedelta(days=rng.randrange((END - date(2020, 1, 1)).days))
+        msg = rng.choice(['Great point on {s}!', 'Congrats on the launch', 'This is how we do {s} too #{t}', 'Thanks for sharing'])
+        comments.append([d.strftime('%Y-%m-%d %H:%M:%S'), f'https://www.linkedin.com/feed/update/urn:li:activity:{k}', msg.format(s=rng.choice(skills), t=rng.choice(TAGS))])
+    reacts = [[(date(2020, 1, 1) + timedelta(days=rng.randrange(2400))).strftime('%Y-%m-%d %H:%M:%S'), rng.choice(['LIKE', 'PRAISE', 'INTEREST']),
+               f'https://www.linkedin.com/feed/update/urn:li:activity:{k}'] for k in range(150)]
+    follows = [[c, (date(2018, 1, 1) + timedelta(days=rng.randrange(3000))).strftime('%a %b %d 10:00:00 UTC %Y')]
+               for c in ['Halcyon Freight', 'Lakemoor University', 'Kestrel Talent', 'Duskwood Robotics']]
+    events = [[f'Lakemoor Data Meetup #{k + 1}', d.strftime('%b %d, %Y, 6:30 PM'), 'Attending', ''] for k, d in enumerate(MEETUPS)]
+    events.append(['Fleet Electrification Summit', 'Mar 14, 2025, 9:00 AM', 'Attending', ''])
+    follow_people = [[f'{rng.choice(FIRST)} {rng.choice(LAST)}', '2024-05-01', 'Active'] for _ in range(6)]
+    follow_people += [[f'{r[0]} {r[1]}', '2023-02-01', 'Active'] for r in rng.sample(rows, 5)]
+    return {
+        'Skills.csv': (['Name'], [[s] for s in skills]),
+        'Endorsement_Received_Info.csv': (['Endorsement Date', 'Skill Name', 'Endorser First Name', 'Endorser Last Name', 'Endorser Public Url', 'Endorsement Status'], rec),
+        'Endorsement_Given_Info.csv': (['Endorsement Date', 'Skill Name', 'Endorsee First Name', 'Endorsee Last Name', 'Endorsee Public Url', 'Endorsement Status'], given),
+        'Education.csv': (['School Name', 'Start Date', 'End Date', 'Notes', 'Degree Name', 'Activities'], [['Lakemoor University', '2011', '2014', '', 'BSc Economics', '']]),
+        'Company Follows.csv': (['Organization', 'Followed On'], follows),
+        'Member_Follows.csv': (['Date', 'FullName', 'Status'], [[d, n, s] for n, d, s in follow_people]),
+        'Groups.csv': (['Title', 'Description', 'Website'], [[g, '', ''] for g in GROUPS]),
+        'Events.csv': (['Event Name', 'Event Time', 'Status', 'External Url'], events),
+        'Shares.csv': (['Date', 'ShareLink', 'ShareCommentary', 'SharedUrl', 'MediaUrl', 'Visibility'], shares),
+        'Comments.csv': (['Date', 'Link', 'Message'], comments),
+        'Reactions.csv': (['Date', 'Type', 'Link'], reacts),
+    }
 
 
 def _table(path):
@@ -189,7 +258,7 @@ def main(argv):
         bad |= hits  # substitute: block colliding values and regenerate
     if real and check_no_overlap(real) > 0:
         sys.exit('synth: privacy overlap could not be removed')
-    print(f'wrote demo/data/Connections.csv, demo/data/Positions.csv, demo/truth.csv')
+    print('wrote demo/data/*.csv (connections, positions, layer files) and demo/truth.csv')
 
 
 if __name__ == '__main__':
