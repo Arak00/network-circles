@@ -7,8 +7,8 @@ CDN = {  # same pinned versions as web/vendor/
     "vendor/graphology-library.min.js": "https://cdn.jsdelivr.net/npm/graphology-library@0.8.0/dist/graphology-library.min.js",
     "vendor/sigma.min.js": "https://cdn.jsdelivr.net/npm/sigma@3.0.2/dist/sigma.min.js",
 }
-REPO_NOTE = ('<p>This is the synthetic demo: 300 fictional people. To map your own export, run the page locally from the '
-             'repository; your files are read inside the tab and never uploaded.</p>'
+REPO_NOTE = ('<p>Demo of 300 fictional people. To open your own export, run the page from the repository; '
+             'your files never leave the tab.</p>'
              '<button type="button" id="pick" hidden>Open</button><input id="files" type="file" hidden>')
 
 

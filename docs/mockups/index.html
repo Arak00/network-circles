@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viewer directions</title>
+<link rel="icon" href="data:,">
+<!-- Static mockups of three layout directions, drawn from the synthetic demo (demo/graph.json). Not the viewer.
+     ?v=A (list first) | B (map with a search rail) | C (circles directory), &theme=light|dark -->
+<style>
+:root { --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964; --line: #e1e0d9; --axis: #c3c2b7;
+  --link: #266fc7; --accent: #2a78d6; --banner: #eef3fa; --dim: #e4e3dd; --unplaced: #c3c2b7; --small: #8a887f; --sel: #fff6d6;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+  --muted: #9a988f; --line: #2c2c2a; --axis: #383835; --link: #3987e5; --accent: #3987e5; --banner: #17202b; --dim: #2a2a28; --unplaced: #55544f; --small: #858379; --sel: #2b2617; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f; --line: #2c2c2a; --axis: #383835;
+  --link: #3987e5; --accent: #3987e5; --banner: #17202b; --dim: #2a2a28; --unplaced: #55544f; --small: #858379; --sel: #2b2617; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
+.app { min-height: 100vh; padding: 12px 16px; display: grid; gap: 12px; align-content: start; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+h1 { font-size: 17px; margin: 0; }
+.demo { font-size: 12px; color: var(--ink-2); }
+header .open { margin-left: auto; }
+button, .btn { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 5px 11px; }
+.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 8px; }
+.q { display: flex; gap: 8px; }
+.q input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1.5px solid var(--axis); border-radius: 8px; padding: 9px 12px; }
+.q.big input { font-size: 18px; padding: 12px 14px; }
+.ask { font-size: 20px; margin: 0 0 10px; font-weight: 600; }
+.hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--axis); color: var(--ink-2); }
+.sum { margin: 10px 0 4px; font-size: 13px; color: var(--ink-2); }
+.res { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.res .g { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-top: 8px; }
+.row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 2px 10px; align-items: baseline; padding: 6px 8px; border-radius: 6px; }
+.row .sw { width: 10px; height: 10px; border-radius: 50%; align-self: center; }
+.row b { font-weight: 600; }
+.row .t { grid-column: 2 / -1; font-size: 12px; color: var(--ink-2); }
+.row .d { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.row.on { background: var(--sel); outline: 1.5px solid var(--axis); }
+.detail { grid-column: 2 / -1; font-size: 12px; color: var(--ink-2); display: grid; gap: 3px; margin-top: 4px; }
+.detail a { color: var(--link); }
+.map svg { width: 100%; height: 100%; display: block; }
+.cap { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.clist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.clist li { display: grid; grid-template-columns: 10px minmax(0, 1fr) 90px 28px; gap: 8px; align-items: center; }
+.clist .bar { height: 6px; border-radius: 3px; }
+.clist .n { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12px; }
+.more { font-size: 13px; color: var(--link); text-decoration: underline; }
+.tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px; width: max-content; }
+.tabs span { padding: 3px 12px; border-radius: 4px; font-size: 13px; }
+.tabs .on { background: var(--ink); color: var(--surface); }
+.when { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.when b { color: var(--ink); }
+.callout { position: absolute; font-size: 11px; background: var(--ink); color: var(--surface); padding: 2px 7px; border-radius: 4px; }
+/* A: list first */
+.A main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 12px; align-items: start; max-width: 1240px; }
+.A .map { height: 440px; }
+/* B: map with a search rail */
+.B main { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 12px; height: calc(100vh - 70px); min-height: 640px; }
+.B .rail { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; min-height: 0; }
+.B .rail .card:last-child { overflow: auto; }
+.B .stage { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; padding: 8px; }
+.B .stage .tabs { position: absolute; top: 10px; right: 10px; }
+/* C: circles directory */
+.C main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 12px; align-items: start; }
+.C .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.C .cc { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 4px 12px; }
+.C .cc.on { outline: 2px solid var(--ink); }
+.C .cc svg { width: 84px; height: 84px; grid-row: span 3; }
+.C .cc h3 { margin: 0; font-size: 14px; }
+.C .cc p { margin: 0; font-size: 12px; color: var(--ink-2); }
+.C .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .A main, .B main, .C main { grid-template-columns: 1fr; height: auto; }
+  .A .map { height: 320px; }
+  .B .stage { height: 46vh; min-height: 300px; order: -1; }
+  .B main { min-height: 0; }
+  .ask { font-size: 18px; }
+  header .open { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+"use strict";
+const qs = new URLSearchParams(location.search), V = qs.get("v") || "A";
+if (qs.get("theme")) document.documentElement.dataset.theme = qs.get("theme");
+const dark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+const PAL = { light: ["#2a78d6", "#eb6834", "#19a573", "#c48400", "#d77198", "#008300", "#6250d6", "#e34948"],
+              dark:  ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"] };
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const col = (c) => (c < 0 ? css("--unplaced") : c >= 8 ? css("--small") : PAL[dark() ? "dark" : "light"][c]);
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmt = (d) => (d ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : "date unknown");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const QUERY = "Kestrel Talent, recruiter";
+
+fetch("../../demo/graph.json").then((r) => r.json()).then((D) => {
+  const name = (c) => (c < 0 ? "Not in a circle" : (D.clusters.find((x) => x.id === c) || {}).label);
+  // search: company contains the words, or a title word starts with them (like the viewer's whoKnow)
+  const norm = (s) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const groups = QUERY.split(",").map((q) => q.trim()).map((q) => ({ q, rows: D.nodes.filter((n) =>
+    ` ${norm(n.company)} `.includes(` ${norm(q)} `) || ` ${norm(n.title)}`.includes(` ${norm(q)}`))
+    .sort((a, b) => (a.connected_on || "9").localeCompare(b.connected_on || "9")) }));
+  const hits = new Set(groups.flatMap((g) => g.rows.map((n) => n.id)));
+  const sel = groups[0].rows[0];
+  const L = D.layers, lnode = new Map(L.nodes.map((n) => [n.id, n]));
+  const own = L.edges.filter((e) => e.s === sel.id || e.t === sel.id).map((e) => ({ n: lnode.get(e.s === sel.id ? e.t : e.s), kind: e.kind })).filter((x) => x.n);
+  const mates = D.nodes.filter((n) => n.cluster === sel.cluster && n.id !== sel.id);
+
+  // ---- packed circles: each circle a sunflower disc (dots can't overlap), discs placed on a spiral without touching
+  const C = 4, DOT = 2.6, by = new Map();
+  D.nodes.forEach((n) => { if (!by.has(n.cluster)) by.set(n.cluster, []); by.get(n.cluster).push(n); });
+  const discs = [...by.entries()].map(([c, ps]) => ({ c, ps, r: C * Math.sqrt(ps.length), R: C * Math.sqrt(ps.length) + (ps.length >= 4 ? 18 : 6) }))
+    .sort((a, b) => (a.c < 0) - (b.c < 0) || b.ps.length - a.ps.length);
+  // Each new disc goes where it touches one or two placed discs, as close to the centre as it can without overlapping.
+  const placed = [], GAP = 6, free = (x, y, R) => placed.every((p) => Math.hypot(p.x - x, p.y - y) >= p.R + R + GAP - 1e-6);
+  for (const d of discs) {
+    const cand = placed.length ? [] : [[0, 0]];
+    for (const a of placed) {
+      for (let k = 0; k < 24; k++) { const t = (k / 24) * 2 * Math.PI, r = a.R + d.R + GAP; cand.push([a.x + r * Math.cos(t), a.y + r * Math.sin(t)]); }
+      for (const b of placed) if (a !== b) {
+        const ra = a.R + d.R + GAP, rb = b.R + d.R + GAP, dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+        if (L > ra + rb || L < Math.abs(ra - rb)) continue;
+        const u = (ra * ra - rb * rb + L * L) / (2 * L), h = Math.sqrt(Math.max(0, ra * ra - u * u)), mx = a.x + (u * dx) / L, my = a.y + (u * dy) / L;
+        cand.push([mx - (h * dy) / L, my + (h * dx) / L], [mx + (h * dy) / L, my - (h * dx) / L]);
+      }
+    }
+    const [x, y] = cand.filter(([x, y]) => free(x, y, d.R)).sort((p, q) => Math.hypot(...p) - Math.hypot(...q))[0];
+    Object.assign(d, { x, y }); placed.push(d);
+    d.ps.forEach((n, i) => { const a = i * 2.39996, r = C * Math.sqrt(i + 0.5); n.x = d.x + r * Math.cos(a); n.y = d.y + r * Math.sin(a); });
+  }
+  const pos = new Map(D.nodes.map((n) => [n.id, n]));
+  function mapSVG({ labelCircles = 8, showOwn = true, fade = true } = {}) {
+    const xs = discs.flatMap((d) => [d.x - d.R, d.x + d.R]), ys = discs.flatMap((d) => [d.y - d.R, d.y + d.R]);
+    const sd = discs.find((d) => d.c === sel.cluster), ux = sel.x - sd.x, uy = sel.y - sd.y, ul = Math.hypot(ux, uy) || 1;
+    // the person's own links (organisation, skills, events) sit on a ring outside every circle, never on a dot
+    const ring = Math.max(...discs.map((d) => Math.hypot(d.x, d.y) + d.R)) + 24, a0 = Math.atan2(sel.y, sel.x);
+    const lay = own.map((o, i) => { const a = a0 + (i - (own.length - 1) / 2) * 0.12; return { ...o, x: ring * Math.cos(a), y: ring * Math.sin(a) }; });
+    const x0 = Math.min(...xs, ...lay.map((l) => l.x - 90)) - 10, x1 = Math.max(...xs, ...lay.map((l) => l.x + 90)) + 10;
+    void ux; void uy; void ul;
+    const y0 = Math.min(...ys, ...lay.map((l) => l.y - 12)) - 10, y1 = Math.max(...ys, ...lay.map((l) => l.y)) + 10;
+    let s = `<svg viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}" role="img" aria-label="Your circles, one disc each">`;
+    const halo = `paint-order="stroke" stroke="${css("--surface")}" stroke-width="3" stroke-linejoin="round"`;
+    for (const d of discs) {
+      const on = d.c === sel.cluster;
+      s += `<circle cx="${d.x}" cy="${d.y}" r="${d.R}" fill="none" stroke="${on ? css("--ink") : css("--line")}" stroke-width="${on ? 1.4 : 1}" ${d.c < 0 ? 'stroke-dasharray="3 3"' : ""}/>`;
+      for (const n of d.ps) s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${DOT}" fill="${col(n.cluster)}" opacity="${!fade || hits.has(n.id) || on ? 1 : 0.28}"/>`;
+    }
+    if (showOwn) for (const l of lay) s += `<line x1="${sel.x}" y1="${sel.y}" x2="${l.x}" y2="${l.y}" stroke="${css("--small")}" stroke-width="1"/>` +
+      `<rect x="${l.x - 3.5}" y="${l.y - 3.5}" width="7" height="7" fill="${css("--ink")}" transform="rotate(45 ${l.x} ${l.y})"/>` +
+      `<text x="${l.x + 8}" y="${l.y + 4}" font-size="11" data-p="50" fill="${css("--ink")}" ${halo}>${esc(l.n.label)} <tspan fill="${css("--muted")}">(${esc(l.kind)})</tspan></text>`;
+    for (const id of hits) { const n = pos.get(id); s += `<circle cx="${n.x}" cy="${n.y}" r="${DOT + 2.2}" fill="none" stroke="${css("--ink")}" stroke-width="1.3"/>`; }
+    s += `<circle cx="${sel.x}" cy="${sel.y}" r="${DOT + 4}" fill="none" stroke="${css("--ink")}" stroke-width="2.4"/>`;
+    s += `<text x="${sel.x + 9}" y="${sel.y - 7}" font-size="12" font-weight="600" data-p="100" fill="${css("--ink")}" ${halo}>${esc(sel.name)}</text>`;
+    discs.filter((d) => d.ps.length >= 4).forEach((d) =>
+      s += `<text x="${d.x}" y="${d.y - d.r - 5}" text-anchor="middle" font-size="11.5" data-p="${d.c === sel.cluster ? 60 : d.ps.length / 10}" fill="${css("--ink-2")}" ${halo}>${esc(name(d.c))} · ${d.ps.length}</text>`);
+    return s + "</svg>";
+  }
+  const discSVG = (c) => { const d = discs.find((x) => x.c === c), m = d.R + 2;
+    return `<svg viewBox="${d.x - m} ${d.y - m} ${2 * m} ${2 * m}" aria-hidden="true"><circle cx="${d.x}" cy="${d.y}" r="${d.R}" fill="none" stroke="${css("--line")}"/>` +
+      d.ps.map((n) => `<circle cx="${n.x}" cy="${n.y}" r="${DOT}" fill="${col(c)}" opacity="${hits.has(n.id) ? 1 : 0.4}"/>` +
+        (hits.has(n.id) ? `<circle cx="${n.x}" cy="${n.y}" r="${DOT + 2.2}" fill="none" stroke="${css("--ink")}" stroke-width="${n.id === sel.id ? 2.4 : 1.3}"/>` : "")).join("") + "</svg>"; };
+
+  // ---- pieces shared by the directions
+  const header = `<header><h1>Network Circles</h1><span class="demo">Demo: 300 fictional people. Your own export never leaves this tab.</span>
+    <button class="open primary">Open your LinkedIn zip</button></header>`;
+  const top = Object.entries(D.nodes.reduce((t, n) => (n.company && (t[n.company] = (t[n.company] || 0) + 1), t), {})).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
+  const search = (big) => `<div class="q ${big ? "big" : ""}"><input value="${esc(QUERY)}" aria-label="Companies or roles"><button class="primary">Find</button></div>
+    <div class="chips"><span class="hint" style="margin:0">Try:</span>${[...top, "recruiter", "designer"].map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>`;
+  const n = hits.size;
+  const summary = `<p class="sum">${n} people for 2 searches, longest known first. <a class="more">Download CSV</a></p>`;
+  const detail = `<div class="detail"><span>In <b>${esc(name(sel.cluster))}</b> with ${mates.length} others, e.g. ${mates.slice(0, 3).map((m) => esc(m.name)).join(", ")}</span>
+    <span>Linked to: ${own.map((o) => `${esc(o.n.label)} (${esc(o.kind)})`).join(", ") || "nothing else"}</span>
+    <span><a>Show ${esc(sel.name.split(" ")[0])} on the map</a> · <a>Open LinkedIn profile</a></span></div>`;
+  const results = (max = 7) => `<ul class="res">${groups.map((g) => `<li class="g">${esc(g.q)}: ${g.rows.length} ${g.rows.length === 1 ? "person" : "people"}</li>` +
+    g.rows.slice(0, max).map((r) => `<li class="row ${r.id === sel.id ? "on" : ""}"><span class="sw" style="background:${col(r.cluster)}"></span>
+      <b>${esc(r.name)}</b><span class="d">${fmt(r.connected_on)}</span><span class="t">${esc([r.title, r.company].filter(Boolean).join(" at "))} · ${esc(name(r.cluster))}</span>
+      ${r.id === sel.id ? detail : ""}</li>`).join("") + (g.rows.length > max ? `<li class="hint">+${g.rows.length - max} more</li>` : "")).join("")}</ul>`;
+  const big = D.clusters.filter((c) => c.id >= 0).slice(0, 6), maxS = Math.max(...big.map((c) => c.size));
+  const circles = `<ul class="clist">${big.map((c) => `<li><span class="sw" style="width:10px;height:10px;border-radius:50%;background:${col(c.id)}"></span><span>${esc(c.label)}</span>
+    <span class="bar" style="width:${(90 * c.size / maxS).toFixed(0)}px;background:${col(c.id)}"></span><span class="n">${c.size}</span></li>`).join("")}</ul>`;
+  const per = {}; D.nodes.forEach((x) => { if (x.connected_on) { const k = x.connected_on.slice(0, 7); per[k] = (per[k] || 0) + 1; } });
+  const peak = Object.entries(per).sort((a, b) => b[1] - a[1])[0];
+  const when = `<div class="when"><span>Busiest month: <b>${fmt(peak[0] + "-01")}</b> (${peak[1]} people)</span><a class="more">Show the timeline</a><a class="more">Layers: skills, organisations, events</a></div>`;
+
+  let body;
+  if (V === "A") body = `<main>
+    <section class="card"><p class="ask">Who do you know at a company, or in a role?</p>${search(true)}${summary}${results()}</section>
+    <section style="display:grid;gap:12px"><div class="card"><h2>Where they sit in your network</h2><div class="map">${mapSVG()}</div>
+      <p class="cap">Each disc is a circle: people who share an employer or were added in the same days. Ringed dots are your results.</p></div>
+      <div class="card"><h2>Your biggest circles</h2>${circles}<p class="hint"><a class="more">All 23 circles</a> · ${when}</p></div></section></main>`;
+  if (V === "B") body = `<main><div class="rail"><div class="card"><h2>Who do you know at…</h2>${search(false)}</div>
+      <div class="card">${summary}${results(6)}</div></div>
+    <section class="card stage"><div class="map">${mapSVG()}</div><div class="tabs"><span class="on">Map</span><span>Layers</span></div>
+      <div style="padding:6px 6px 0">${when}</div></section></main>`;
+  if (V === "C") {
+    const cs = D.clusters.filter((c) => c.id >= 0 && c.id < 8).sort((a, b) => (b.id === sel.cluster) - (a.id === sel.cluster));
+    const comp = (c) => { const t = {}; D.nodes.filter((x) => x.cluster === c).forEach((x) => { if (x.company) t[x.company] = (t[x.company] || 0) + 1; });
+      return Object.entries(t).sort((a, b) => b[1] - a[1]).slice(0, 3).map((x) => `${x[0]} ${x[1]}`).join(", "); };
+    const span = (c) => { const ds = D.nodes.filter((x) => x.cluster === c && x.connected_on).map((x) => x.connected_on).sort();
+      return ds.length ? `${ds[0].slice(0, 4)}–${ds[ds.length - 1].slice(0, 4)}` : ""; };
+    const inC = (c) => [...hits].filter((h) => pos.get(h).cluster === c).length;
+    body = `<div class="card top" style="display:flex"><div style="flex:1;min-width:260px">${search(false)}</div><div class="tabs"><span class="on">Circles</span><span>Map</span><span>Layers</span></div></div>
+      <main><div class="card">${summary}${results(6)}</div>
+      <div class="cards">${cs.map((c) => `<div class="card cc ${c.id === sel.cluster ? "on" : ""}">${discSVG(c.id)}<h3>${esc(c.label)}</h3>
+        <p>${c.size} people · connected ${span(c.id)}</p><p>${esc(comp(c.id))}</p>${inC(c.id) ? `<p><b>${inC(c.id)} of your results</b>${c.id === sel.cluster ? `, including ${esc(sel.name)}` : ""}</p>` : ""}</div>`).join("")}
+        <div class="card cc" style="grid-template-columns:1fr"><h3>15 smaller groups and 59 people in no circle</h3><p><a class="more">Show them</a> · ${when}</p></div></div></main>`;
+  }
+  document.getElementById("app").className = "app " + V;
+  document.getElementById("app").innerHTML = header + body;
+  // Text in the map is sized in screen pixels, then placed greedily: the person first, then their links, then circles
+  // by size; a label that would overlap one already kept, or a ringed result dot, is dropped.
+  for (const svg of document.querySelectorAll(".map svg")) {
+    const k = svg.viewBox.baseVal.width / svg.getBoundingClientRect().width, kept = [];
+    for (const t of svg.querySelectorAll("text")) { t.setAttribute("font-size", (+t.getAttribute("font-size")) * k); t.setAttribute("stroke-width", 3 * k); }
+    const ts = [...svg.querySelectorAll("text")].sort((a, b) => (+b.dataset.p || 0) - (+a.dataset.p || 0));
+    for (const t of ts) { const b = t.getBBox(), hit = kept.some((o) => b.x < o.x + o.width && o.x < b.x + b.width && b.y < o.y + o.height && o.y < b.y + b.height);
+      if (hit) t.remove(); else kept.push(b); }
+  }
+});
+</script>
+</body>
+</html>

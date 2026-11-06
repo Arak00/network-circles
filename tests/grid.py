@@ -66,8 +66,21 @@ def long_names(d, rng):
     rewrite(os.path.join(d, "Positions.csv"), lambda h, r: [r[0] + LONG] + r[1:])
 
 
+# Strings people type when they have no employer to name; shared by strangers, so they must not make a circle.
+GENERIC = ["Freelance", "Self-employed", "Self Employed", "Freelancer", "Independent Consultant", "Stealth Startup",
+           "Consultant", "Indépendant", "Auto-entrepreneur", "Freelance UX Designer", "Stealth", "Confidential"]
+
+
+def generic(d, rng):  # a quarter of the demo lists a generic employer (on real exports one "Freelance" swallowed most of the network)
+    rewrite(os.path.join(d, "Connections.csv"), lambda h, r: r[:4] + [rng.choice(GENERIC) if rng.random() < 0.25 else r[4]] + r[5:])
+
+
+def bunched(d, rng):  # most connections added in one month (an address-book import): the timeline must collapse
+    rewrite(os.path.join(d, "Connections.csv"), lambda h, r: r[:6] + [f"{rng.randint(1, 30):02d} Sep 2024" if rng.random() < 0.7 else r[6]])
+
+
 CASES = {"tiny": (0.1, None), "demo": (1.0, None), "large": (10.0, None), "nodates": (1.0, no_dates),
-         "onecircle": (0.2, one_circle), "skills88": (1.0, skills_88), "nonlatin": (1.0, non_latin), "longnames": (1.0, long_names)}
+         "onecircle": (0.2, one_circle), "skills88": (1.0, skills_88), "nonlatin": (1.0, non_latin), "longnames": (1.0, long_names), "generic": (1.0, generic), "bunched": (1.0, bunched)}
 
 if __name__ == "__main__":
     shutil.rmtree(OUT, ignore_errors=True)

@@ -3,14 +3,19 @@
 
   python tests/grid.py && python tests/layout_test.py [case ...] [--axe]
 
-For every case x width (390/768/1400) x theme (light/dark) x state (map, map+pin, layers, layers+pin):
+For every case x width (390/768/1400) x theme (light/dark), in the List layout: map, map+result (search, click the
+first result), map+pin, layers, layers+pin, map again; then the Map and Circles layouts with a result clicked:
   - no two drawn labels overlap (boxes recorded by the viewer's own label renderer)
+  - Map: no dot overlaps another, no label covers a dot, the camera never zooms out past the fit
+  - a pin or a search names at most 20 people on the map
+  - search results stay listed and visible while a person is pinned
+  - the status line is one short sentence; the timeline is collapsed exactly when most connections fall in 3 months
   - Layers draws at scale >= 0.95 (fitted, or the deliberate 1:1 pan mode on narrow screens)
   - when Layers is fitted, every label is inside the canvas
   - no horizontal page scroll, no console errors
 Also reports edge crossings in Layers. --axe runs axe-core on the demo case. Exit code 1 on any failure.
 Writes tests/report/layout.json (synthetic data only)."""
-import functools, http.server, json, os, sys, threading, time
+import functools, http.server, json, os, re, sys, threading, time
 from playwright.sync_api import sync_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +33,31 @@ def serve():
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), h)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv
+
+
+def dot_overlaps(dots):
+    """-> pairs of dots (x, y, r, key, kind) whose discs overlap by more than SLACK px."""
+    out, ds = [], sorted(dots)
+    for i, a in enumerate(ds):
+        for b in ds[i + 1:]:
+            if b[0] - b[2] >= a[0] + a[2] - SLACK:
+                break
+            if ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 < a[2] + b[2] - SLACK:
+                out.append((a[3], b[3]))
+    return out
+
+
+def labels_on_dots(boxes, dots):
+    """-> (label, dot key) where a label box covers a dot other than its own by more than SLACK px."""
+    out = []
+    for bx in boxes:
+        for x, y, r, k, _ in dots:
+            if k == bx.get("key"):
+                continue
+            dx, dy = x - max(bx["x"], min(x, bx["x"] + bx["w"])), y - max(bx["y"], min(y, bx["y"] + bx["h"]))
+            if (dx * dx + dy * dy) ** 0.5 < r - SLACK:
+                out.append((bx["label"], k))
+    return out
 
 
 def overlaps(boxes):
@@ -50,6 +80,11 @@ PIN_TOP = """() => { const S = window.__netmap, R = S.renderer; let best = null,
   setFocus(best, true); return best; }"""
 
 
+PEOPLE_NAMED = "() => window.__measure().boxes.filter(b => window.__netmap.G.hasNode(b.key) && window.__netmap.G.getNodeAttribute(b.key, 'kind') === 'person').length"
+RESULTS = """() => { const l = document.getElementById('knowList'), r = l.getBoundingClientRect();
+  return { rows: l.querySelectorAll('li[data-k]').length, shown: !!l.offsetParent && r.height > 0 }; }"""
+
+
 def check_page(page, errors, case, width, theme, fails, crossings):
     def state(name):
         page.evaluate(FRAME)
@@ -58,6 +93,17 @@ def check_page(page, errors, case, width, theme, fails, crossings):
         ov = overlaps(m["boxes"])
         if ov:
             fails.append(f"{where}: {len(ov)} label overlaps, e.g. {ov[:3]}")
+        if m["view"] == "map" and m["page"] != "circles":
+            do, ld = dot_overlaps(m["dots"]), labels_on_dots(m["boxes"], m["dots"])
+            if do:
+                fails.append(f"{where}: {len(do)} dots overlap another, e.g. {do[:3]}")
+            if ld:
+                fails.append(f"{where}: {len(ld)} labels cover a dot, e.g. {ld[:3]}")
+            if m["ratio"] > 1.0001:
+                fails.append(f"{where}: zoomed out past the fit (ratio {m['ratio']})")
+            named = page.evaluate(PEOPLE_NAMED)
+            if named > 20:
+                fails.append(f"{where}: {named} people named on the map (max 20)")
         if m["view"] == "layers":
             if m["scale"] is None or m["scale"] < 0.95:
                 fails.append(f"{where}: Layers scale {m['scale']}")
@@ -71,14 +117,37 @@ def check_page(page, errors, case, width, theme, fails, crossings):
             fails.append(f"{where}: horizontal page scroll")
         return m
 
+    st = page.evaluate("document.getElementById('status').textContent")
+    if not re.fullmatch(r"[^.]+\.", st) or "/" in st or ".csv" in st or len(st) > 90:
+        fails.append(f"{case}/{width}/{theme}: status is not one short sentence: {st!r}")
+    tl = page.evaluate("({ hidden: document.getElementById('timeline').hidden, bunched: window.__netmap.bunched, sum: document.getElementById('tsum').textContent })")
+    if case == "bunched" and not (tl["bunched"] and tl["hidden"]) or case == "demo" and tl["hidden"]:
+        fails.append(f"{case}/{width}/{theme}: timeline should be collapsed only when connections bunch up: {tl}")
     state("map")
+    chip = page.evaluate("document.querySelector('#knowPicks .chip')?.textContent")
+    if chip:  # search, then click the first result: context kept, results kept
+        page.fill("#knowQ", chip); page.press("#knowQ", "Enter"); page.evaluate(FRAME)
+        before = page.evaluate(RESULTS)
+        page.click("#knowList li[data-k] .kp"); state("map+result")
+        page.evaluate(PIN_TOP); state("map+result+pin")
+        after = page.evaluate(RESULTS)
+        if after["rows"] != before["rows"] or not after["shown"]:
+            fails.append(f"{case}/{width}/{theme}: results changed or hid while a person was pinned: {before} -> {after}")
+        page.click("#knowClear")
     page.evaluate(PIN_TOP); state("map+pin"); page.evaluate("clearFocus()")
     if page.evaluate("!document.getElementById('viewSwitch').hidden"):
         page.click("#vLayers"); state("layers")
         page.evaluate(PIN_TOP); state("layers+pin"); page.evaluate("clearFocus()")
         page.click("#vMap"); state("map-again")
     if page.evaluate("document.querySelector('#knowPicks .chip') !== null"):  # who-do-I-know selection on the map
-        page.click("#knowPicks .chip"); state("map+know"); page.click("#knowClear")
+        page.click("#knowPicks .chip"); state("map+know")
+        for view in ("map", "circles"):  # the other two layouts, with a result pinned
+            page.click(f"#pageView [data-view={view}]"); page.wait_for_timeout(150)
+            page.click("#knowList li[data-k] .kp"); state(f"{view}-layout+result")
+            if not page.evaluate(RESULTS)["shown"]:
+                fails.append(f"{case}/{width}/{theme}/{view}: results hidden while a person is pinned")
+            page.keyboard.press("Escape")
+        page.click("#pageView [data-view=list]"); page.click("#knowClear")
     if errors:
         fails.append(f"{case}/{width}/{theme}: console errors {errors[:2]}")
 
@@ -87,11 +156,12 @@ def keyboard(page, fails):
     """Pin and release by keyboard only; a circle can be picked out without its colour."""
     name = page.evaluate("(() => { const S = window.__netmap; let best = null, deg = -1; S.G.forEachNode((k, a) => {"
                          " if (a.kind === 'person' && S.G.degree(k) > deg) { deg = S.G.degree(k); best = a.label; } }); return best; })()")
-    page.focus("#find"); page.keyboard.type(name); page.keyboard.press("Enter"); page.evaluate(FRAME); page.wait_for_timeout(150)
+    page.focus("#knowQ"); page.keyboard.type(name); page.keyboard.press("Enter"); page.evaluate(FRAME)
+    page.focus("#knowList li[data-k] .kp"); page.keyboard.press("Enter"); page.evaluate(FRAME); page.wait_for_timeout(150)
     st = page.evaluate("({ focus: window.__netmap.focus, pinned: window.__netmap.pinned, live: document.getElementById('live').textContent,"
-                       " tip: !document.getElementById('tip').hidden })")
-    if not (st["focus"] and st["pinned"] and name in st["live"] and st["tip"]):
-        fails.append(f"keyboard: find + Enter did not pin and announce {name!r}: {st}")
+                       " detail: !!document.querySelector('#knowList li.on .detail') })")
+    if not (st["focus"] and st["pinned"] and name in st["live"] and st["detail"]):
+        fails.append(f"keyboard: search + Enter on a result did not pin, open and announce {name!r}: {st}")
     page.keyboard.press("Escape"); page.evaluate(FRAME)
     if page.evaluate("window.__netmap.focus"):
         fails.append("keyboard: Escape did not release the pin")
@@ -99,7 +169,7 @@ def keyboard(page, fails):
     page.evaluate(FRAME)
     dimmed = page.evaluate("""(() => { const S = window.__netmap, R = S.renderer, c = +document.querySelector('#legend button').dataset.id;
       let inC = 0, outDim = 0, out = 0; S.G.forEachNode((k, a) => { if (a.kind !== 'person') return; const d = R.getNodeDisplayData(k);
-        if (!d || d.hidden) return; if (a.cluster === c) inC++; else { out++; if (d.color === getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()) outDim++; } });
+        if (!d || d.hidden) return; if (a.cluster === c) inC++; else { out++; if (d.color !== colorOf(a.cluster)) outDim++; } });
       return { hl: S.hl, inC, out, outDim }; })()""")
     if dimmed["hl"] is None or dimmed["out"] != dimmed["outDim"] or not dimmed["inC"]:
         fails.append(f"keyboard: focusing a circle in the list did not single out its members: {dimmed}")
@@ -111,7 +181,8 @@ def keyboard(page, fails):
 def know(page, fails):
     """Who do I know at…: known answers on the demo, CSV contents, clear."""
     page.fill("#knowQ", "Kestrel Talent"); page.click("#knowForm button[type=submit]"); page.evaluate(FRAME)
-    got = page.evaluate("""(() => ({ n: window.__netmap.sel.size, circles: [...document.querySelectorAll('#knowList .kp span:last-child')].map(e => e.textContent) }))()""")
+    got = page.evaluate("""(() => ({ n: window.__netmap.sel.size, circles: [...document.querySelectorAll('#knowList li[data-k] .kp')]
+      .filter(b => window.__netmap.G.getNodeAttribute(b.parentNode.dataset.k, 'kind') === 'person').map(b => b.querySelector('span:last-child').textContent) }))()""")
     if got["n"] != 2 or not all(c.startswith("Glimmer Networks · eng · ") for c in got["circles"]):
         fails.append(f"know: Kestrel Talent should give 2 people in Glimmer Networks · eng, got {got}")
     with page.expect_download() as dl:

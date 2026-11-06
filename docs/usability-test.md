@@ -8,15 +8,15 @@ These five questions are the acceptance criteria for the viewer. A tester who ha
 
 | Job | Question | Where |
 |-----|----------|-------|
-| J1 | Which circles is my network made of, and how big is each? | Map, Circles list |
-| J2 | Which circle is a given person in, and who else is in it? | Map, find box |
-| J3 | When did my network grow, and which circle came from which period? | Timeline |
+| J1 | Which circles is my network made of, and how big is each? | Your circles (list or cards), map |
+| J2 | Which circle is a given person in, and who else is in it? | Search box, a result's detail |
+| J3 | When did my network grow, and which circle came from which period? | Timeline card |
 | J4 | Which organisations, skills, events and groups go with which circle? | Layers |
 | J5 | What do two circles have in common? | Layers |
 
 ## Setup
 
-Use the public demo (300 fictional people) for the timed tasks, so every task has one known answer and you can score it the same way for everyone. Serve the repo (`python3 -m http.server` from its folder) and open `web/`. The published page at `https://arak00.github.io/network-circles/` only has the current version once it has been pushed. Clear the site data first so the "How it works" dialog appears, as it would for a new user.
+Use the public demo (300 fictional people) for the timed tasks, so every task has one known answer and you can score it the same way for everyone. Serve the repo (`python3 -m http.server` from its folder) and open `web/?view=list`, `web/?view=map` or `web/?view=circles` (see "Comparing the three layouts" below). The published page at `https://arak00.github.io/network-circles/` only has the current version once it has been pushed. Clear the site data first, as a new user would have it. Nothing opens on top of the page any more; "How it works" is a link in the header.
 
 Use a laptop with a mouse. If you also want a phone result, run a sixth session on a phone and keep it separate.
 
@@ -28,15 +28,21 @@ Read each task aloud, start a timer, and stop it when the tester gives an answer
 
 | Task | Job | Say to the tester | Right answer |
 |------|-----|-------------------|--------------|
-| T1 | J1 | "This is someone's LinkedIn network. Which is their biggest group of people, and about how many are in it?" | Cobblestone Cloudworks · data, 44. Saying "Unplaced, 59" is a fail: unplaced people are the ones in no circle, and the viewer should make that clear. |
+| T1 | J1 | "This is someone's LinkedIn network. Which is their biggest group of people, and about how many are in it?" | Cobblestone Cloudworks · data, 44. Saying "Not in a circle, 59" is a fail: those are the people in no circle, and the viewer should make that clear. |
 | T2 | J2 | "Find Goran Valcourt. Which group is this person in? Name two other people in the same group." | Ashgrove Mobility · eng, plus any two of its members (check by hovering them). |
-| T3 | J3 | "In which month did this person add the most connections?" | September 2024 (24 people). August or October 2024 is a partial. |
-| T4 | J4 | "Switch to the view that shows organisations. The people who work at Halcyon Freight: which group are they in?" | Halcyon Freight · ops. |
+| T3 | J3 | "In which month did this person add the most connections?" | September 2024 (24 people). August or October 2024 is a partial. The timeline card now states the busiest month in words, so this should be fast; note whether the tester reads it or uses the bars. |
+| T4 | J4 | "Switch to the view that shows organisations. The people who work at Halcyon Freight: which group are they in?" | Halcyon Freight · ops. Typing "Halcyon Freight" in the search box also answers it (17 people, all in that circle); record which route the tester takes. |
 | T5 | J5 | "Find a skill that two different groups share, and name the skill and both groups." | Any skill drawn with links to two or more circles, for example Roadmapping. Verify by hovering the skill. |
-| T6 | Who do I know at a company (`research/findings.md`, job 1) | "A friend asks whether this person knows anyone at Kestrel Talent. How many people do they know there, and which group are those people in?" | 2 people, both in Glimmer Networks · eng. The "Who do I know at…" box in the side panel answers it directly; record what the tester tries first, and whether they notice the box without help. |
-| T7 | Who did I meet at an event (job 4, provisional) | "This person went to Lakemoor Data Meetup #4. Who did they connect with in the week after it? How many, and which group are most of them in?" | 7 people, connected 8 to 15 November 2023; 5 of them in Cobblestone Cloudworks · data. |
+| T6 | Who do I know at a company (`research/findings.md`, job 1) | "A friend asks whether this person knows anyone at Kestrel Talent. How many people do they know there, and which group are those people in?" | 2 people, both in Glimmer Networks · eng. The search box at the top answers it directly; record what the tester tries first. |
+| T7 | Who did I meet at an event (job 4, provisional) | "This person went to Lakemoor Data Meetup #4. Who did they connect with in the week after it? How many, and which group are most of them in?" | 7 people, connected 8 to 15 November 2023; 5 of them in Cobblestone Cloudworks · data. Route: search "Lakemoor", click the #4 event, then "List the people linked to it". |
 
 Then ask, without timing: "What did you expect to happen that didn't?" and "What was the most confusing thing on the screen?". Write down their words.
+
+## Comparing the three layouts
+
+The viewer has three layouts of the same parts: List (search and results first, map beside them), Map (search in a rail, map large) and Circles (search on top, circles as cards, no map). Testers can switch between them with the buttons at the top, and the link decides where they start.
+
+Rotate the starting layout: P1 list, P2 map, P3 circles, P4 list, P5 map, and so on, and write it in the `view` column. Note whether and when the tester switches. With five testers that is one or two people per layout, so it can only show a layout that clearly fails (both of its testers stuck on the same task), not which one is better. For a real comparison, either run each tester on two layouts with different tasks, or count online with the anonymous counter in `research/fake-door.md`; the viewer sends every layout switch, search, pin and CSV download through one empty `track()` function in `web/app.js` for that purpose. Turning that counter on is a privacy decision: it adds a request to a third party, though it never sees the files.
 
 ## Their own export (optional, private)
 
@@ -75,8 +81,8 @@ T6 and T7 are not part of the pass rule. They test the two jobs chosen in `resea
 One row per tester in `docs/usability-results.csv`, which stays out of the repo if it holds anything identifying. Use codes (P1 to P5), never names:
 
 ```
-tester,T1,T1_s,T2,T2_s,T3,T3_s,T4,T4_s,T5,T5_s,T6,T6_s,T7,T7_s,own_task,sus1,sus2,sus3,sus4,sus5,sus6,sus7,sus8,sus9,sus10,notes
-P1,success,35,partial,80,success,20,fail,120,success,60,partial,95,success,50,yes,4,2,4,1,4,2,4,2,4,2,"looked for the timeline under the map first"
+tester,view,T1,T1_s,T2,T2_s,T3,T3_s,T4,T4_s,T5,T5_s,T6,T6_s,T7,T7_s,own_task,sus1,sus2,sus3,sus4,sus5,sus6,sus7,sus8,sus9,sus10,notes
+P1,list,success,35,partial,80,success,20,fail,120,success,60,partial,95,success,50,yes,4,2,4,1,4,2,4,2,4,2,"looked for the timeline under the map first"
 ```
 
 Outcomes are `success`, `partial` or `fail`; `_s` columns are seconds.

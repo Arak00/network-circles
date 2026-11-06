@@ -19,8 +19,9 @@ If you touched the viewer (`web/`), also run the layout tests. They need Playwri
 
 ```sh
 pip install playwright && python -m playwright install chromium
-python tests/grid.py              # synthetic exports: 30, 300 and 3,000 people plus edge cases
-python tests/layout_test.py --axe # label overlaps, Layers scale, page scroll, console errors, keyboard, axe
+python tests/grid.py              # synthetic exports: 30, 300 and 3,000 people plus edge cases (always run it whole: it clears tests/out)
+python tests/layout_test.py --axe # overlaps (labels, dots, labels on dots), pins name <= 20 people, results stay up, keyboard, axe
+python tests/shots.py after       # screenshots and numbers of the main journey into tests/report/, to compare with a "before" run
 python tests/palette_check.py     # circle colours: contrast, and colour-vision warnings
 python tests/journey_test.py      # own-data journey end to end; fails if any request carries data (needs network for Pyodide)
 ```

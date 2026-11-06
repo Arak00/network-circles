@@ -6,40 +6,134 @@
 <title>Network Circles</title>
 <link rel="icon" href="data:,">
 <style>
-/* Layout: full-height tool. Map left, cluster panel right, timeline under the map. Stacks on phones. */
+/* Three layouts of the same parts, picked by the visitor (main[data-view]): list first, map with a search rail,
+   circles as cards. Same order on phones for all three: search first. */
 :root {
   --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964;
   --line: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6; --link: #266fc7; --focus: #2a78d6;
-  --edge: #e6e5df; --err: #c0392f; --bar: #c3c2b7; --banner: #eef3fa;
+  --edge: #e6e5df; --err: #c0392f; --bar: #c3c2b7; --banner: #eef3fa; --sel: #fff6d6;
   --small: #8a887f; --unplaced: #c3c2b7; --layer: #2b2a27; --layer-edge: #cfcec6; --dim: #e9e8e3; --edge-focus: #8a887f;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
-  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec;
+  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec; --sel: #2b2617;
   --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
-  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec;
+  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec; --sel: #2b2617;
   --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark }
-html, body { height: 100%; }
+* { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
-.app { display: grid; grid-template-rows: auto auto 1fr; height: 100%; box-sizing: border-box;
-  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 12px; }
-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
-h1 { font-size: 18px; margin: 0; text-wrap: balance; }
-.sub { color: var(--ink-2); margin: 0; }
-.src { color: var(--muted); font-size: 12px; margin-left: auto; }
-main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; min-height: 0; }
-.stage { display: grid; grid-template-rows: 1fr auto; gap: 8px; min-height: 0; min-width: 0; }
-#graph { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; min-height: 360px; overflow: hidden; }
+.app { display: grid; gap: 12px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+h1 { font-size: 17px; margin: 0; }
+button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 5px 11px; cursor: pointer; }
+button:hover { border-color: var(--ink-2); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.link { background: none; border: none; padding: 0; color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.seg { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px; }
+.seg button { border: none; border-radius: 4px; padding: 3px 12px; background: none; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg[hidden] { display: none; }
+#drop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-left: auto; font-size: 12px; color: var(--ink-2); border-radius: 6px; padding: 2px; }
+#drop p { margin: 0; }
+#drop.over { outline: 2px dashed var(--accent); outline-offset: 4px; }
+#status { flex-basis: 100%; text-align: right; color: var(--ink); }
+#status:empty { display: none; }
+#status.err { color: var(--err); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 8px; }
+.hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+main { display: grid; gap: 12px; align-items: start; }
+#searchCard { grid-area: search; } #resultsCard { grid-area: results; } #mapCard { grid-area: map; }
+#circlesCard { grid-area: circles; } #timeCard { grid-area: time; }
+main[data-view="list"] { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); max-width: 1320px;
+  grid-template-areas: "search map" "results map" "results circles" "results time" "results ."; grid-template-rows: auto auto auto auto 1fr; }
+main[data-view="list"] #graph { height: 440px; }
+main[data-view="map"] { grid-template-columns: 380px minmax(0, 1fr); grid-template-areas: "search map" "results map" "circles time"; grid-template-rows: auto 1fr auto; }
+main[data-view="map"] #graph { height: max(480px, calc(100vh - 190px)); }
+main[data-view="circles"] { grid-template-columns: 360px minmax(0, 1fr); grid-template-areas: "search search" "results circles" "time circles" ". circles"; grid-template-rows: auto auto auto 1fr; }
+main[data-view="circles"] #mapCard { display: none; }
+main[data-view="circles"] #timeline { grid-template-columns: auto minmax(0, 1fr); }
+main[data-view="circles"] #now { grid-column: 1 / -1; text-align: left; }
+main[data-view="circles"] #spark, main[data-view="circles"] .sparkcap { grid-column: 1 / -1; }
+main[data-view="map"] #resultsCard { max-height: calc(100vh - 330px); min-height: 200px; overflow: auto; }
+
+/* search */
+.ask { font-size: 19px; font-weight: 600; margin: 0 0 10px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+main[data-view="map"] .ask { font-size: 15px; }
+.q { display: flex; gap: 8px; }
+#knowQ { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1.5px solid var(--axis); border-radius: 8px; padding: 9px 12px; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; color: var(--ink-2); }
+/* results */
+.rhead { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+#knowSummary { margin: 0; flex: 1 1 220px; font-size: 13px; color: var(--ink-2); }
+#knowSummary:empty { display: none; }
+#knowList, #pinned { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+#knowList .kq { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-top: 8px; }
+.kp { width: 100%; text-align: left; border-color: transparent; background: none; padding: 6px 8px; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 1px 10px; align-items: baseline; }
+.kp:hover, .kp:focus-visible { border-color: var(--axis); background: var(--bg); }
+.kp .sw { width: 10px; height: 10px; border-radius: 50%; align-self: center; }
+.kp b { font-weight: 600; }
+.kp .d { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kp span:not(.sw):not(.d) { grid-column: 2 / -1; font-size: 12px; color: var(--ink-2); }
+li.on > .kp, #pinned .kp { background: var(--sel); border-color: var(--axis); }
+.detail { margin: 2px 0 6px 28px; font-size: 12px; color: var(--ink-2); display: grid; gap: 3px; }
+#pinned:empty { display: none; }
+/* map */
+#mapCard { padding: 8px; display: grid; gap: 6px; }
+#graph { position: relative; min-height: 300px; overflow: hidden; border-radius: 6px; }
+#canvas, #canvas > div { position: absolute; inset: 0; }
+#canvas { top: 40px; }
+.tools { position: absolute; top: 4px; left: 4px; right: 4px; display: flex; gap: 8px; align-items: center; z-index: 2; }
+.tools .cap { margin: 0 0 0 auto; font-size: 12px; color: var(--muted); text-align: right; }
 #tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--axis);
-  border-radius: 4px; padding: 6px 8px; font-size: 12px; max-width: 260px; box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 2; }
+  border-radius: 4px; padding: 6px 8px; font-size: 12px; max-width: 260px; box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 3; }
 #tip b { display: block; font-size: 13px; }
 #tip span { color: var(--ink-2); display: block; }
-.timeline { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
-.timeline label { font-size: 12px; color: var(--ink-2); }
+#empty { position: absolute; inset: 40px 0 0; display: grid; place-items: center; margin: 0; color: var(--ink-2); padding: 16px; text-align: center; }
+#empty[hidden] { display: none; }
+/* circles */
+#legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+#legend > li > button { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) 80px 32px; gap: 8px; align-items: center;
+  text-align: left; border-color: transparent; background: none; padding: 4px 6px; }
+#legend > li > button:hover, #legend > li > button[aria-pressed="true"] { background: var(--bg); border-color: var(--axis); }
+#legend .sw { width: 10px; height: 10px; border-radius: 50%; }
+#legend .bar { height: 6px; border-radius: 3px; }
+.num { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; text-align: right; white-space: nowrap; }
+.lbl { overflow-wrap: anywhere; }
+#legend details { padding: 0 6px 4px 24px; font-size: 12px; color: var(--ink-2); }
+#legend details ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+#legend summary { cursor: pointer; color: var(--muted); }
+main[data-view="circles"] #legend { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+main[data-view="circles"] #legend > li > button { grid-template-columns: 84px minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 2px 12px; align-items: start;
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px; height: 100%; }
+main[data-view="circles"] #legend .disc { grid-row: span 3; width: 84px; height: 84px; }
+main[data-view="circles"] #legend .lbl { font-weight: 600; }
+main[data-view="circles"] #legend .sub { font-size: 12px; color: var(--ink-2); }
+main:not([data-view="circles"]) #legend .disc, main:not([data-view="circles"]) #legend .sub { display: none; }
+main[data-view="circles"] #legend .bar, main[data-view="circles"] #legend .sw, main[data-view="circles"] #legend .num { display: none; }
+main[data-view="circles"] #legend > li.on > button { outline: 2px solid var(--ink); }
+#kinds { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+#kinds label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+#kinds .num { margin-left: auto; }
+#layersCard { margin-top: 10px; }
+#layersCard[hidden] { display: none; }
+details.trust { margin-top: 10px; font-size: 12px; }
+details.trust summary { cursor: pointer; color: var(--muted); }
+.meta { margin: 6px 0 0; padding-left: 16px; color: var(--ink-2); display: grid; gap: 4px; }
+/* timeline */
+#timeCard[hidden] { display: none; }
+.tsum { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 13px; color: var(--ink-2); }
+.tsum p { margin: 0; }
+#timeline { margin-top: 8px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+#timeline[hidden] { display: none; }
 #month { width: 100%; margin: 0; accent-color: var(--accent); }
 #now { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-2); white-space: nowrap; min-width: 15ch; text-align: right; }
 #now b { color: var(--ink); }
@@ -49,62 +143,7 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; mi
 #spark rect.cur { fill: var(--ink); }
 .sparkcap { grid-column: 2; display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 #motionNote { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin: 0; }
-button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
-button:hover { border-color: var(--ink-2); }
-button:disabled { opacity: .5; cursor: not-allowed; }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-aside { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; min-width: 0; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
-h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 6px; }
-.hint { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
-#knowQ { box-sizing: border-box; width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--axis); border-radius: 4px; padding: 6px 8px; resize: vertical; }
-#knowForm .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-.picks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; color: var(--ink-2); }
-#knowSummary { margin: 8px 0 0; }
-#knowList { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 320px; overflow: auto; }
-#knowList .kq { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-top: 6px; }
-#knowList .kp { width: 100%; text-align: left; border-color: transparent; background: none; padding: 4px 6px; display: grid; }
-#knowList .kp:hover, #knowList .kp:focus-visible { border-color: var(--axis); background: var(--bg); }
-#knowList .kp span { font-size: 12px; color: var(--ink-2); }
-#legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-#legend button { width: 100%; display: grid; grid-template-columns: 12px minmax(0,1fr) auto; gap: 8px; align-items: center;
-  text-align: left; border-color: transparent; background: none; padding: 4px 6px; }
-#legend button:hover { background: var(--bg); }
-#legend button[aria-pressed="true"] { border-color: var(--axis); background: var(--bg); }
-.sw { width: 12px; height: 12px; border-radius: 50%; }
-button[aria-pressed="true"] .sw { border-radius: 3px; }
-.lbl { overflow-wrap: anywhere; }
-.num { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
-.meta { margin: 0; padding-left: 16px; color: var(--ink-2); font-size: 12px; display: grid; gap: 4px; }
-#drop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; background: var(--banner); border: 1.5px dashed var(--axis);
-  border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--ink-2); }
-#drop p { margin: 0; flex: 1 1 320px; }
-#drop.over { border-color: var(--accent); }
-#status { font-size: 12px; color: var(--ink); margin: 0; flex-basis: 100%; }
-#status:empty { display: none; }
-.lhead { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 0 6px 2px 26px; }
-#legend details { padding: 0 6px 4px 26px; font-size: 12px; color: var(--ink-2); }
-#legend details ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
-#legend summary { cursor: pointer; color: var(--muted); }
-.seg { display: flex; gap: 4px; margin-bottom: 6px; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-#kinds { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
-#kinds label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-#kinds .num { margin-left: auto; }
-#layersCard[hidden] { display: none; }
-header .how { margin-left: auto; }
-.link { background: none; border: none; padding: 0; color: var(--link);  /* text: 4.5:1, darker than --accent */ text-decoration: underline; text-underline-offset: 2px; }
-.tools { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 8px; z-index: 2; pointer-events: none; }
-.tools > * { pointer-events: auto; }
-.tools .seg { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.tools .seg button { border: none; }
-.tools .seg[hidden] { display: none; }
-#find { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px;
-  width: 280px; min-width: 0; flex: 0 1 auto; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.hintbar { position: absolute; bottom: 8px; left: 12px; right: 12px; margin: 0; font-size: 11px; color: var(--muted); pointer-events: none; z-index: 1; }
-details.card > summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
-details.card[open] > summary { margin-bottom: 6px; }
+/* dialog */
 dialog { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px;
   background: var(--surface); color: var(--ink); box-shadow: 0 10px 40px rgba(0,0,0,.25); }
 dialog::backdrop { background: rgba(0,0,0,.35); }
@@ -112,20 +151,17 @@ dialog h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var
 dialog h3 { font-size: 13px; margin: 14px 0 4px; }
 dialog ol, dialog ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--ink-2); }
 dialog .row { display: flex; justify-content: flex-end; margin-top: 16px; }
-dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-#empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-2); padding: 16px; text-align: center; }
-#empty[hidden] { display: none; }
-#canvas, #canvas > div { position: absolute; inset: 0; }
-#canvas { top: 50px; bottom: 22px; }  /* below the toolbar, above the hint line */
-.timeline[hidden] { display: none; }  /* sigma owns this box; kill() empties it */
-#status.err { color: var(--err); }
-.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 760px) {
-  .app { height: auto; }
-  main { grid-template-columns: 1fr; }
-  #graph { height: 60vh; }
-  .src { margin-left: 0; }
-  .timeline { grid-template-columns: auto minmax(0, 1fr); }
+  main[data-view] { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; max-width: none; }
+  main[data-view="list"] { grid-template-areas: "search" "results" "map" "circles" "time"; }
+  main[data-view="map"] { grid-template-areas: "search" "map" "results" "circles" "time"; }
+  main[data-view="circles"] { grid-template-areas: "search" "results" "circles" "time"; }
+  main[data-view] #graph { height: 58vh; }
+  main[data-view="map"] #resultsCard { max-height: none; overflow: visible; }
+  #drop { margin-left: 0; }
+  #status { text-align: left; }
+  .ask { font-size: 17px; }
+  #timeline { grid-template-columns: auto minmax(0, 1fr); }
   #now { grid-column: 1 / -1; text-align: left; }
   #spark, .sparkcap { grid-column: 1 / -1; }
 }
@@ -135,16 +171,19 @@ dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(
 <div class="app">
   <header>
     <h1>Network Circles</h1>
-    <p class="sub">The circles your LinkedIn network is made of, and the skills, companies and groups around them.</p>
-    <p class="src" id="source">Loading…</p>
-    <button type="button" class="link how" id="howBtn">How it works</button>
+    <div class="seg" id="pageView" role="group" aria-label="Layout">
+      <button type="button" data-view="list" aria-pressed="true">List</button>
+      <button type="button" data-view="map" aria-pressed="false">Map</button>
+      <button type="button" data-view="circles" aria-pressed="false">Circles</button>
+    </div>
+    <button type="button" class="link" id="howBtn">How it works</button>
+    <div id="drop">
+      <p>Read in this tab, never uploaded.</p>
+      <button type="button" id="pick" class="primary">Open your LinkedIn zip</button>
+      <input id="files" type="file" multiple accept=".zip,.csv" class="vh" tabindex="-1" aria-label="LinkedIn export: the zip file, or its CSV files">
+      <p id="status" role="status"></p>
+    </div>
   </header>
-  <div id="drop">
-    <button type="button" id="pick">Open your LinkedIn files</button>
-    <input id="files" type="file" multiple accept=".zip,.csv" class="vh" tabindex="-1" aria-label="LinkedIn export: the zip file, or its CSV files">
-    <p>Pick the zip LinkedIn sent you, or drop it anywhere on this page; no need to unzip it. It is read inside this tab and never uploaded.</p>
-    <p id="status" role="status"></p>
-  </div>
   <dialog id="how" aria-labelledby="howTitle">
     <h2 id="howTitle">How Network Circles works</h2>
     <h3>1. Get your files from LinkedIn</h3>
@@ -155,33 +194,60 @@ dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(
     </ol>
     <h3>2. Open them here</h3>
     <ul>
-      <li>Click <b>Open your LinkedIn files</b> and pick the zip, or drop it on the page. Already unzipped? Select all the CSV files instead.</li>
+      <li>Click <b>Open your LinkedIn zip</b> and pick it, or drop it on the page. Already unzipped? Select all the CSV files instead.</li>
       <li>Everything runs in this browser tab. Nothing is uploaded or stored.</li>
-      <li>To find who you already know at a company, use <b>Who do I know at…</b> in the side panel. <a href="../who/">More about it</a>.</li>
     </ul>
-    <h3>3. Read the map</h3>
+    <h3>3. Ask who you know</h3>
     <ul>
-      <li>Each dot is a connection. Colours are <b>circles</b>: people linked by a shared company or added around the same days.</li>
-      <li><b>Hover</b> anything to see what it connects to. <b>Click</b> to keep it highlighted, click the background to let go.</li>
-      <li><b>Layers</b> lines up your groups, topics, posts and skills on the left and organisations and events on the right of your circles.</li>
-      <li>Drag the timeline or press <b>Play</b> to watch your network grow.</li>
+      <li>Type companies, roles, names, skills or events in the search box, separated by commas. <a href="../who/">More about it</a>.</li>
+      <li>Click a person to see their circle and what they're linked to. Click a circle to list everyone in it.</li>
+      <li>A <b>circle</b> is a group of people who share an employer or joined your network in the same few days. Generic employers such as "Freelance" don't count.</li>
+      <li><b>List</b>, <b>Map</b> and <b>Circles</b> at the top are three layouts of the same thing. <b>Layers</b> on the map lines up your skills, organisations, events and groups next to your circles.</li>
     </ul>
     <form method="dialog" class="row"><button class="primary">Got it</button></form>
   </dialog>
-  <main>
-    <section class="stage" aria-label="Network map">
-      <div id="graph"><div id="tip" hidden></div>
+  <main id="main" data-view="list">
+    <section class="card" id="searchCard">
+      <h2 class="ask" id="askTitle">Who do you know at a company, or in a role?</h2>
+      <form id="knowForm" role="search" aria-labelledby="askTitle">
+        <div class="q">
+          <input id="knowQ" type="search" placeholder="Halcyon Freight, recruiter" autocomplete="off" aria-labelledby="askTitle" aria-describedby="knowHint">
+          <button type="submit" class="primary">Find</button>
+        </div>
+        <div class="picks" id="knowPicks"></div>
+        <p class="hint" id="knowHint">Separate several with commas. Names, skills and events work too.</p>
+      </form>
+    </section>
+    <section class="card" id="resultsCard" aria-label="Results">
+      <div class="rhead"><p id="knowSummary" role="status"></p><button type="button" id="knowCsv" hidden>Download CSV</button><button type="button" id="knowClear" class="link" hidden>Clear</button></div>
+      <ul id="pinned" aria-label="Pinned on the map"></ul>
+      <ol id="knowList"></ol>
+      <p class="hint" id="knowEmpty">Results show here with each person's circle and when you connected. You can also click a circle to list its people.</p>
+    </section>
+    <section class="card" id="mapCard" aria-label="Network map">
+      <div id="graph">
         <div class="tools">
-          <div class="seg" id="viewSwitch" role="group" aria-label="Layout" hidden>
+          <div class="seg" id="viewSwitch" role="group" aria-label="Map layout" hidden>
             <button type="button" id="vMap" aria-pressed="true">Map</button>
             <button type="button" id="vLayers" aria-pressed="false">Layers</button>
           </div>
-          <input id="find" type="search" list="findList" placeholder="Find a person, skill or company" aria-label="Find a person, skill or company" autocomplete="off">
-          <datalist id="findList"></datalist>
+          <p class="cap" id="mapCap">One disc per circle. Your results in full colour.</p>
         </div>
-        <p class="hintbar">Hover to see links · click to pin · scroll to zoom</p><p id="empty">Loading the demo network…</p><div id="canvas" role="img" aria-label="Network map of your connections, coloured by circle. Use the find box or the circle list to explore it by keyboard."></div>
-        <p id="live" class="vh" aria-live="polite"></p></div>
-      <div class="timeline">
+        <div id="tip" hidden></div>
+        <p id="empty">Loading the demo network…</p>
+        <div id="canvas" role="img" aria-label="Map of your connections: one disc of dots per circle. Use the search box or the circle list to explore it by keyboard."></div>
+        <p id="live" class="vh" aria-live="polite"></p>
+      </div>
+    </section>
+    <section class="card" id="circlesCard">
+      <h2>Your circles</h2>
+      <ul id="legend"></ul>
+      <div id="layersCard" hidden><h2>Show in Layers</h2><ul id="kinds"></ul></div>
+      <details class="trust"><summary>How far to trust this</summary><ul class="meta" id="meta"></ul></details>
+    </section>
+    <section class="card" id="timeCard" aria-label="When you connected">
+      <div class="tsum"><p id="tsum"></p><button type="button" class="link" id="tToggle" aria-controls="timeline" aria-expanded="false">Show the timeline</button></div>
+      <div id="timeline" hidden>
         <button id="play" type="button" aria-describedby="motionNote" disabled>Play</button>
         <div>
           <label for="month" class="vh">Show connections made up to month</label>
@@ -193,34 +259,6 @@ dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(
         <p id="motionNote" hidden>Play is off because your system asks for reduced motion. Drag the slider or use the arrow keys.</p>
       </div>
     </section>
-    <aside>
-      <div class="card" id="knowCard">
-        <h2>Who do I know at…</h2>
-        <p class="hint">Companies or roles, separated by commas. Lists the people you're connected to there, longest-known first. Nothing leaves this tab.</p>
-        <form id="knowForm">
-          <label for="knowQ" class="vh">Companies or roles</label>
-          <textarea id="knowQ" rows="2" placeholder="Halcyon Freight, recruiter" autocomplete="off"></textarea>
-          <div class="picks" id="knowPicks" aria-label="Companies you know most people at"></div>
-          <div class="row"><button type="submit" class="primary">Find</button><button type="button" id="knowCsv" hidden>Download CSV</button><button type="button" id="knowClear" class="link" hidden>Clear</button></div>
-        </form>
-        <p id="knowSummary" class="hint" role="status"></p>
-        <ol id="knowList"></ol>
-      </div>
-      <div class="card">
-        <h2>Circles</h2>
-        <p class="hint">Click one to fold its people into a single dot. Names are generated from the top company and role.</p>
-        <div class="lhead" aria-hidden="true"><span>Circle</span><span>people · cohesion</span></div>
-        <ul id="legend"></ul>
-      </div>
-      <div class="card" id="layersCard" hidden>
-        <h2>Show</h2>
-        <ul id="kinds"></ul>
-      </div>
-      <details class="card">
-        <summary>How far to trust this</summary>
-        <ul class="meta" id="meta"></ul>
-      </details>
-    </aside>
   </main>
 </div>
 <script src="vendor/graphology.umd.min.js"></script>

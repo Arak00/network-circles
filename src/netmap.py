@@ -15,6 +15,17 @@ import pandas as pd
 # force everyone into a few blobs; ego added nothing. They stay available for the ablation. Re-pick on hand labels.
 DEFAULT_W = {"co": 1.0, "burst": 1.0}
 SCALED = ("role", "era", "burst")  # big affiliations: contribution divided by log2(size+1)
+# Employer strings that name no employer. Strangers share them, so they must never tie people together: one
+# a single "Freelance" can pull most of a network into one circle. Matched on the whole clean() name, so "Acme Consulting" and
+# "Independent Bank" stay companies. The name is still shown and searchable; it just links nobody.
+GENERIC = re.compile(r"^(?:self ?employed|freelanc\w*|independent(?: (?:consultant|contractor|consulting|professional|advisor|adviser))?"
+                     r"|consult(?:ant|ing)|stealth|stealth (?:mode|startup|start up|company)(?: \w+)?|startup|confidential|undisclosed"
+                     r"|retired|unemployed|student|none|n a|na|various|multiple|self|myself|entrepreneur|my own (?:company|business)"
+                     r"|own business|open to work|looking for .*|seeking .*|career break|sabbatical|private"
+                     r"|ind[eé]pendante?|auto ?entrepreneur|micro ?entrepreneur|travailleur ind[eé]pendant|[àa] mon compte"
+                     r"|freiberuf\w*|selbst(?:st)?[äa]ndig\w*|aut[oó]nom[oa]|zelfstandige?|zzp\w*)"
+                     r"(?: (?:freelanc\w*|consultant|designer|developer|engineer|ux designer|ux|writer|photographer))?$")
+is_generic = lambda name: not clean(name) or bool(GENERIC.match(clean(name)))
 LEGAL = {"inc", "ltd", "gmbh", "sa", "sas", "llc", "plc", "group", "bv", "co", "corp", "limited", "ag"}
 
 # ponytail: keyword map, first match wins; order matters (e.g. "data engineer" -> data, "product designer" -> design).
@@ -177,14 +188,14 @@ def people(data, cutoff=0.88, overrides=None):
     conn, pos = data["connections"], data["positions"]
     raw_cos = [str(c) for c in conn["Company"].fillna("")]
     mapping, merges = merge(raw_cos, cutoff, overrides)
-    ego_cos = {clean(c): c.strip() for c in pos["Company Name"].fillna("") if clean(c)}
+    ego_cos = {clean(c): c.strip() for c in pos["Company Name"].fillna("") if not is_generic(c)}
     rows = []
     for i, r in enumerate(conn.to_dict("records")):
         co = mapping.get(str(r.get("Company") or "").strip(), "")
         title = str(r.get("Position") or "").strip()
         role = role_of(title)
         affs = []
-        if co:
+        if co and not is_generic(co):
             affs.append("co:" + co)
             ck = clean(co)
             hit = max(ego_cos, key=lambda k: ratio(ck, k), default=None)
@@ -297,7 +308,7 @@ def summarise(df, g, memb):
         if c == -1:
             out.append({"id": -1, "size": len(idx), "label": "unplaced", "cohesion": None})
             continue
-        cos = Counter(df["company"].iloc[i] for i in idx if df["company"].iloc[i])
+        cos = Counter(df["company"].iloc[i] for i in idx if not is_generic(df["company"].iloc[i]))
         roles = Counter(df["role"].iloc[i] for i in idx if df["role"].iloc[i] != "other")
         parts = [cos.most_common(1)[0][0]] if cos else []
         parts += [roles.most_common(1)[0][0]] if roles else []
@@ -382,7 +393,7 @@ def layers(d, df):
     orgs += [(c, "you follow it") for c, _ in rows(rd("Company Follows.csv"), ("Organization", "Company", "Name"), ("Followed On", "Date"))]
     by_co = defaultdict(list)
     for i, co in zip(df["id"], df["company"]):
-        if co:
+        if not is_generic(co):
             by_co[clean(co)].append(i)
     for name, how in orgs:
         o, ck = node("org", name, how=how), clean(name)
@@ -475,7 +486,8 @@ def run(input_dir, weights=None, seed=0, resolution=1.0, cutoff=0.88):
     return {
         "meta": {"n_people": n, "n_edges": g.ecount(), "n_clusters": sum(1 for c in clusters if c["id"] >= 0),
                  "share_unplaced": round(memb.count(-1) / n, 3) if n else 0.0, "weights": W, "seed": seed,
-                 "resolution": resolution, "modularity": None if q is None else round(q, 4)},
+                 "resolution": resolution, "modularity": None if q is None else round(q, 4),
+                 "generic": sorted({c for c in df["company"] if c and is_generic(c)})},
         "nodes": [{"id": int(r["id"]), "name": r["name"], "company": r["company"], "title": r["title"],
                    "role": r["role"], "connected_on": r["connected_on"].date().isoformat() if r["connected_on"] else None,
                    "cluster": memb[k]} for k, r in enumerate(df.to_dict("records"))],
@@ -526,6 +538,16 @@ def selftest():
     tail = " International Holdings Group Limited (EMEA Operations Division)"  # long shared suffix must not merge
     mapping, _ = merge([f"{w}{tail}" for w in ("Alpha", "Beta", "Gamma", "Delta")] + ["Acme Inc.", "ACME"])
     assert len({mapping[f"{w}{tail}"] for w in ("Alpha", "Beta", "Gamma", "Delta")}) == 4 and mapping["ACME"] == mapping["Acme Inc."], mapping
+    for name in ("Freelance", "Self-Employed", "self employed", "Freelance UX designer", "Stealth Startup", "Independent Consultant",
+                 "Indépendant", "Auto-entrepreneur", "Consultant", "n/a", "", "Selbstständig"):
+        assert is_generic(name), ("generic employer not caught", name)
+    for name in ("Acme Consulting", "Independent Bank", "Stealth Bio", "Freelancer.com Ltd", "Student Loans Company", "Initech"):
+        assert not is_generic(name), ("real company caught as generic", name)
+    gen = [{"First Name": f"F{k}", "Last Name": "Test", "Company": c, "Position": "Engineer", "connected_on": None}
+           for k, c in enumerate(["Freelance", "Freelance", "freelance", "Self-employed", "Self Employed"])]
+    gdf, _ = people(dict(data, connections=pd.DataFrame(gen)))
+    assert not any(a.startswith(("co:", "ego:")) for affs in gdf["affs"] for a in affs), "generic employer made a company tie"
+    assert project(gdf).ecount() == 0, "people sharing only a generic employer must not be linked"
     out = run(d)
     truth = [cos[co] for co, _ in rows if co in cos]
     got = [n["cluster"] for n, (co, _) in zip(out["nodes"], rows) if co in cos]

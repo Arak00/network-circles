@@ -60,7 +60,7 @@ def run(browser, base, label, files, fails, requests, expect_error=None):
             fails.append(f"{label}: expected an error mentioning {expect_error!r}, got {msg!r}")
         print(f"{label}: error shown: {msg}")
         return page.close()
-    page.wait_for_function("window.__netmap && window.__netmap.renderer && /Done\\./.test(document.getElementById('status').textContent)"
+    page.wait_for_function("window.__netmap && window.__netmap.renderer && /^Done/.test(document.getElementById('status').textContent)"
                            " || document.getElementById('status').classList.contains('err')", timeout=180000)
     status_text = page.evaluate("document.getElementById('status').textContent")
     secs = round(time.time() - t0, 1)
