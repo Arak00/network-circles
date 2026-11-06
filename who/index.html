@@ -107,13 +107,13 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 20px 0 40
           <p class="when">About 2 minutes. LinkedIn emails you when it's ready, within 24 hours.</p>
         </li>
         <li>
-          <h3>Download it and unzip it</h3>
-          <p class="path">Open the link in LinkedIn's email and download the zip file. Double-click it to unzip. You'll get a folder of CSV files, including <b>Connections.csv</b>.</p>
+          <h3>Download it</h3>
+          <p class="path">Open the link in LinkedIn's email and download the zip file. There's no need to unzip it.</p>
           <p class="when">The link in the email works for 72 hours.</p>
         </li>
         <li>
           <h3>Open the files here</h3>
-          <p class="path">Open Network Circles, click <b>Open your LinkedIn files</b> and select the CSV files from the folder (all of them, or at least Connections.csv and Positions.csv).</p>
+          <p class="path">Open Network Circles, click <b>Open your LinkedIn files</b> and pick the zip you downloaded. You can also drag it onto the page.</p>
           <p class="when">10 to 30 seconds the first time, depending on your connection, while your browser loads the tool.</p>
           <p><a class="btn ghost" id="openOwn" href="../web/?own=1&amp;know=Halcyon%20Freight%2C%20recruiter">Open Network Circles with my files</a></p>
         </li>
@@ -134,6 +134,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 20px 0 40
           <ul>
             <li>Your browser reads them on your computer. They are never uploaded, here or anywhere else.</li>
             <li>There's no account and no server that could keep a copy. Nothing about your network is saved, not even in your browser; the only thing it remembers is that you've seen its short introduction.</li>
+            <li>From the zip, only the files the tool uses are opened. Your messages and everything else in the archive are never even unpacked.</li>
             <li>Close the tab and it's all gone.</li>
           </ul>
         </div>
@@ -161,9 +162,9 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 20px 0 40
 
     <section aria-labelledby="faq-h">
       <h2 id="faq-h">Questions</h2>
-      <details><summary>Which files do I need?</summary><p>Connections.csv is enough for the list. Positions.csv, your own work history, adds the companies you've worked at to the map. Selecting every CSV in the folder is simplest; the tool ignores what it doesn't use.</p></details>
+      <details><summary>Which files do I need?</summary><p>Just the zip LinkedIn sends you. The tool reads Connections.csv from it for the list, and Positions.csv, your own work history, to add the companies you've worked at to the map. If you've already unzipped it, select all the CSV files in the folder instead.</p></details>
       <details><summary>My download has no Connections.csv</summary><p>At least one person has reported an archive without it. Request your data again and pick Connections on its own; LinkedIn says that can take up to 48 hours.</p></details>
-      <details><summary>Can I use it on my phone?</summary><p>You can try the sample network on a phone. For your own data you need a computer, because LinkedIn's data download and unzipping the archive both work best there.</p></details>
+      <details><summary>Can I use it on my phone?</summary><p>You can try the sample network on a phone. For your own data you need a computer, because LinkedIn only offers the data download there.</p></details>
       <details><summary>Is this made by LinkedIn?</summary><p>No. It's an independent open-source project that reads the files LinkedIn lets you download about yourself.</p></details>
     </section>
   </main>

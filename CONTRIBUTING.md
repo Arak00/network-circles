@@ -35,6 +35,5 @@ Never put a real export, real names or real companies in issues, pull requests o
 
 - A better role keyword map (the `ROLES` list in `netmap.py`)
 - A weighted null model in `validate.py`
-- Zip support in the viewer's drop mode
 - An offline Pyodide bundle
 - Date formats from exports in other languages

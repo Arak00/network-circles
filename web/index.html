@@ -141,8 +141,8 @@ dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(
   </header>
   <div id="drop">
     <button type="button" id="pick">Open your LinkedIn files</button>
-    <input id="files" type="file" multiple accept=".csv" class="vh" tabindex="-1" aria-label="LinkedIn export CSV files">
-    <p>Or drop the unzipped CSV files anywhere on this page. They are read inside this tab and never uploaded.</p>
+    <input id="files" type="file" multiple accept=".zip,.csv" class="vh" tabindex="-1" aria-label="LinkedIn export: the zip file, or its CSV files">
+    <p>Pick the zip LinkedIn sent you, or drop it anywhere on this page; no need to unzip it. It is read inside this tab and never uploaded.</p>
     <p id="status" role="status"></p>
   </div>
   <dialog id="how" aria-labelledby="howTitle">
@@ -151,11 +151,11 @@ dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(
     <ol>
       <li>On a computer, open LinkedIn and click <b>Me → Settings &amp; Privacy → Data privacy → Download your data</b>.</li>
       <li>Choose <b>the larger data archive</b> and click <b>Request archive</b>. The smaller one has no skills, endorsements or posts.</li>
-      <li>LinkedIn emails you a link within 24 hours; it works for 72 hours. Download the zip and unzip it.</li>
+      <li>LinkedIn emails you a link within 24 hours; it works for 72 hours. Download the zip. There is no need to unzip it.</li>
     </ol>
     <h3>2. Open them here</h3>
     <ul>
-      <li>Click <b>Open your LinkedIn files</b> and select all the CSV files, or drop them on the page.</li>
+      <li>Click <b>Open your LinkedIn files</b> and pick the zip, or drop it on the page. Already unzipped? Select all the CSV files instead.</li>
       <li>Everything runs in this browser tab. Nothing is uploaded or stored.</li>
       <li>To find who you already know at a company, use <b>Who do I know at…</b> in the side panel. <a href="../who/">More about it</a>.</li>
     </ul>

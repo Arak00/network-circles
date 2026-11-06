@@ -41,7 +41,7 @@ python -m http.server
 # open http://localhost:8000/web/ and drop the export's CSV files on the page
 ```
 
-Opening `/web/` with no file shows the synthetic demo. Drop mode downloads the Pyodide runtime (about 10 MB) from jsDelivr the first time. It doesn't read zip files, so unzip the export first.
+Opening `/web/` with no file shows the synthetic demo. Drop mode downloads the Pyodide runtime (about 10 MB) from jsDelivr the first time. You can pick the zip LinkedIn sends as it is: the viewer decompresses only the files it uses (with the browser's `DecompressionStream`) and never unpacks the rest, such as messages. Unzipped CSV files work too.
 
 ## Which export files are used
 

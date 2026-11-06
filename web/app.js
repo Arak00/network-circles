@@ -703,23 +703,60 @@ function getPyodide() {
   pyReady.catch(() => { pyReady = null; });  // never cache a failed load
   return pyReady;
 }
+// Reads the zip LinkedIn sends, so nobody has to unzip it: end-of-central-directory -> central directory -> each entry.
+// Only entries the tool uses (EXPORT_NAMES, matched by file name in any folder) are decompressed, with the browser's
+// own DecompressionStream; messages and everything else in the archive are never opened.
+// ponytail: stored and deflate entries only, no zip64 or encryption; LinkedIn's export uses neither.
+async function zipEntries(file) {
+  const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer), u8 = new TextDecoder();
+  let e = buf.length - 22;
+  while (e >= 0 && e >= buf.length - 65557 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0 || dv.getUint32(e, true) !== 0x06054b50) throw new Error(`${file.name} doesn't look like a zip file.`);
+  let p = dv.getUint32(e + 16, true);
+  const count = dv.getUint16(e + 10, true), out = [];
+  if (p === 0xffffffff) throw new Error(`${file.name} is a zip64 archive, which isn't supported. Unzip it and pick the CSV files instead.`);
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error(`${file.name} looks damaged. Download it again from LinkedIn's email.`);
+    const flags = dv.getUint16(p + 8, true), method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), rest = dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true), at = dv.getUint32(p + 42, true);
+    const base = u8.decode(buf.subarray(p + 46, p + 46 + nlen)).split("/").pop();
+    p += 46 + nlen + rest;
+    const name = EXPORT_NAMES.find((n) => n.toLowerCase() === base.toLowerCase());
+    if (!name || out.some((o) => o.name === name)) continue;
+    if (flags & 1) throw new Error(`${file.name} is password-protected.`);
+    const start = at + 30 + dv.getUint16(at + 26, true) + dv.getUint16(at + 28, true), raw = buf.subarray(start, start + size);
+    const bytes = method === 0 ? raw : method === 8
+      ? new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer())
+      : null;
+    if (!bytes) throw new Error(`${base} in ${file.name} uses a compression this page can't read. Unzip it and pick the CSV files instead.`);
+    out.push({ name, text: u8.decode(bytes) });
+  }
+  return out;
+}
 const tick = () => new Promise((r) => setTimeout(r, 30));
 let busy = false;
 async function runFiles(files) {
   if (busy || window.DEMO_GRAPH) return;  // one run at a time; later drops/picks are ignored until it finishes
-  const all = [...files], csv = all.filter((f) => /\.csv$/i.test(f.name));
-  if (all.some((f) => /\.zip$/i.test(f.name)) && !csv.length) return status("Zip files are not read. Unzip the export and drop the CSV files.", true);
-  if (!csv.some((f) => /^connections\.csv$/i.test(f.name))) return status("Connections.csv is required. Drop it with the other CSV files from the export.", true);
+  const all = [...files], zips = all.filter((f) => /\.zip$/i.test(f.name)), csvs = all.filter((f) => /\.csv$/i.test(f.name));
+  if (!zips.length && !csvs.length) return status("Pick the zip file LinkedIn sent you, or the CSV files from it.", true);
   busy = true; $("pick").disabled = true;
   try {
     stopPlay();
-    const texts = await Promise.all(csv.map((f) => f.text()));  // read everything before touching /in
+    if (zips.length) status("Opening the zip in this tab…");
+    const csv = [];  // read everything before touching /in
+    for (const z of zips) csv.push(...(await zipEntries(z)).filter((f) => !csv.some((c) => c.name === f.name)));
+    for (const f of csvs) {
+      const name = EXPORT_NAMES.find((n) => n.toLowerCase() === f.name.toLowerCase()) || f.name;
+      if (!csv.some((c) => c.name === name)) csv.push({ name, text: await f.text() });
+    }
+    if (!csv.some((f) => f.name === "Connections.csv"))
+      throw new Error(zips.length ? "There's no Connections.csv in this zip. Request your data again from LinkedIn and include Connections." : "Connections.csv is required. Pick it with the other CSV files from the export, or pick the zip itself.");
     status("Downloading the Python runtime from the CDN (about 10 MB, first time only)…");
     const py = await getPyodide();
     status(`Reading ${csv.length} file${csv.length > 1 ? "s" : ""} in this tab…`);
     py.FS.mkdirTree("/in");
     for (const f of py.FS.readdir("/in")) if (f !== "." && f !== "..") py.FS.unlink("/in/" + f);
-    csv.forEach((f, i) => py.FS.writeFile("/in/" + (EXPORT_NAMES.find((n) => n.toLowerCase() === f.name.toLowerCase()) || f.name), texts[i]));
+    csv.forEach((f) => py.FS.writeFile("/in/" + f.name, f.text));
     status("Finding circles…"); await tick();
     const out = py.runPython("import sys, json\nsys.path.insert(0, '/home/pyodide')\nimport netmap\njson.dumps(netmap.run('/in'))");
     status("Drawing…"); await tick();
@@ -800,7 +837,7 @@ applyMotionPref();
   // ?own=1 (from the showcase page's "open my files" step): wait for the visitor's files instead of showing the demo
   if (qs.get("own") === "1") {
     $("source").textContent = "Waiting for your files";
-    $("empty").textContent = "Click Open your LinkedIn files above and select the CSV files from the folder you unzipped (at least Connections.csv). They're read in this tab and never uploaded." + (qs.get("know") ? " Your search will run as soon as they're read." : "");
+    $("empty").textContent = "Click Open your LinkedIn files above and pick the zip file LinkedIn sent you. No need to unzip it. It's read in this tab and never uploaded." + (qs.get("know") ? " Your search will run as soon as they're read." : "");
     $("pick").focus();
     return;
   }
