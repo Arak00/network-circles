@@ -42,20 +42,25 @@ figure { margin: 0 0 8px; }
 figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
 section { padding: 48px 0 8px; }
-.gets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
-.card p { color: var(--ink-2); font-size: 15px; margin: 0; }
-ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 12px; }
-ol.steps > li { counter-increment: s; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 16px 12px 64px; }
-ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--axis); display: grid; place-items: center; font-weight: 650; }
-ol.steps .when { margin-bottom: 8px; }
-.when { font-size: 13px; color: var(--muted); }
-.path { font-size: 15px; color: var(--ink-2); }
-.path b { color: var(--ink); font-weight: 600; }
-.tip { font-size: 14px; background: var(--banner); border-radius: 6px; padding: 8px 10px; margin: 8px 0 0; }
-.private { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.private ul, .limits ul { margin: 0; padding-left: 20px; color: var(--ink-2); }
-.private li, .limits li { margin-bottom: 6px; }
+.sub { color: var(--ink-2); font-size: 15px; margin-bottom: 16px; }
+/* steps: one picture each, numbered, four across on a wide screen, two on a tablet, one on a phone */
+ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 42vw), 1fr)); gap: 16px 12px; }
+ol.steps > li { counter-increment: s; position: relative; }
+ol.steps > li::before { content: counter(s); position: absolute; left: -6px; top: -8px; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--surface); display: grid; place-items: center; font-weight: 650; font-size: 14px; z-index: 1; }
+ol.steps svg { display: block; width: 100%; height: auto; margin-bottom: 10px; background: var(--banner); border-radius: 10px; }
+ol.steps h3 { font-size: 16px; margin-bottom: 2px; }
+.when { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.tip { font-size: 14px; background: var(--banner); border-radius: 6px; padding: 8px 10px; margin: 16px 0 0; display: inline-block; }
+/* drawing tokens for the step pictures */
+.f-s { fill: var(--surface); } .f-b { fill: var(--bg); } .f-a { fill: var(--axis); } .f-l { fill: var(--line); } .f-i { fill: var(--ink); }
+.f-hl { fill: var(--banner); stroke: var(--link); stroke-width: 1.5; } .f-ok { fill: var(--ok); }
+.st-l { stroke: var(--line); } .st-a { stroke: var(--axis); stroke-width: 1.5; } .st-ok { stroke: var(--ok); } .st-i { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
+.t1, .t2, .t3, .tb { font-family: var(--sans); } .t1 { font-size: 11px; fill: var(--ink); font-weight: 600; } .t2 { font-size: 11px; fill: var(--ink-2); }
+.t3 { font-size: 10px; fill: var(--muted); } .tb { font-size: 10.5px; fill: var(--surface); font-weight: 600; }
+ul.facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+ul.facts li { color: var(--ink-2); font-size: 15px; padding-left: 18px; position: relative; }
+ul.facts li::before { content: ""; position: absolute; left: 0; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+ul.facts b { color: var(--ink); display: block; }
 details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
 summary { cursor: pointer; font-weight: 600; }
 details p { color: var(--ink-2); margin: 8px 0 0; font-size: 15px; }
@@ -71,100 +76,106 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 20px 0 40
 
   <main>
     <h1>Who do you already know at the company you want?</h1>
-    <p class="lead">Type the companies or roles you're aiming for. You get the people you're already connected to there, which part of your network each one comes from, and how long you've known them. That's who to ask for an introduction.</p>
+    <p class="lead">Type a company or a role. See the people you're already connected to there, and how you know each one. That's who to ask for an introduction.</p>
 
     <form class="ask" action="../web/" method="get">
       <label for="q">Companies or roles, separated by commas</label>
       <input id="q" name="know" value="Halcyon Freight, recruiter" autocomplete="off">
       <button class="btn primary" type="submit">Try it on a sample network</button>
     </form>
-    <p class="promise">Your LinkedIn files are read inside your browser. Nothing is uploaded, and nothing is stored.</p>
+    <p class="promise">Your files are read in your browser. Nothing is uploaded or stored.</p>
 
     <figure>
       <picture>
         <source srcset="know-dark.png" media="(prefers-color-scheme: dark)">
         <img src="know-light.png" width="1600" height="750" alt="Network Circles with the search 'Halcyon Freight, recruiter'. The results list 24 people, grouped by search, each with their job, their circle and the date they connected. The first one is open and shows their circle and what links them to you. The map beside the list shows the people found in full colour, one disc per circle.">
       </picture>
-      <figcaption>A sample network of 300 fictional people. Click a name to see their circle and what links you; the map beside the list shows where they sit.</figcaption>
+      <figcaption>A sample network of 300 fictional people.</figcaption>
     </figure>
 
-    <section aria-labelledby="gets">
-      <h2 id="gets">What you get</h2>
-      <div class="gets">
-        <div class="card"><h3>A list per company or role</h3><p>Everyone you're connected to who works there or has that job title, the people you've known longest first.</p></div>
-        <div class="card"><h3>Where each person comes from</h3><p>Their circle: the former employer, client or event that put them in your network. It tells you how you know them.</p></div>
-        <div class="card"><h3>A spreadsheet to work from</h3><p>Download the list as a CSV and plan your messages. It's built in your browser, like everything else.</p></div>
-      </div>
-    </section>
-
     <section id="steps" aria-labelledby="steps-h">
-      <h2 id="steps-h">Get your own list in four steps</h2>
-      <p>The only waiting is for LinkedIn to prepare your data. Use a computer: LinkedIn doesn't offer the download on its phone app.</p>
+      <h2 id="steps-h">Your own list in four steps</h2>
+      <p class="sub">On a computer: LinkedIn only offers the download there.</p>
       <ol class="steps">
         <li>
+          <svg viewBox="0 0 220 140" role="img" aria-label="LinkedIn's settings menu: Me, Settings and Privacy, Data privacy, Download your data, then the Request archive button.">
+            <rect class="f-s st-l" x="8" y="8" width="204" height="124" rx="8"/>
+            <rect class="f-b" x="8" y="8" width="204" height="18" rx="8"/><rect class="f-b" x="8" y="18" width="204" height="8"/>
+            <circle class="f-a" cx="20" cy="17" r="3"/><circle class="f-a" cx="30" cy="17" r="3"/><circle class="f-a" cx="40" cy="17" r="3"/>
+            <text class="t2" x="22" y="44">Me</text><text class="t3" x="40" y="44">›</text>
+            <text class="t2" x="50" y="44">Settings &amp; Privacy</text>
+            <text class="t2" x="22" y="62">Data privacy</text><text class="t3" x="94" y="62">›</text>
+            <rect class="f-hl" x="16" y="70" width="136" height="20" rx="4"/>
+            <text class="t1" x="22" y="84">Download your data</text>
+            <path class="st-i" d="M150 86 l10 14 l3 -6 l7 1 z" stroke-linejoin="round"/>
+            <rect class="f-i" x="22" y="102" width="98" height="22" rx="5"/>
+            <text class="tb" x="71" y="117" text-anchor="middle">Request archive</text>
+          </svg>
           <h3>Ask LinkedIn for your data</h3>
-          <p class="path">On linkedin.com, click <b>Me</b>, then <b>Settings &amp; Privacy</b>, <b>Data privacy</b>, <b>Download your data</b>. Choose the larger archive and click <b>Request archive</b>.</p>
-          <p class="when">About 2 minutes. LinkedIn emails you when it's ready, within 24 hours.</p>
+          <p class="when">Me › Settings &amp; Privacy › Data privacy › Download your data. Pick the larger archive.</p>
         </li>
         <li>
-          <h3>Download it</h3>
-          <p class="path">Open the link in LinkedIn's email and download the zip file. There's no need to unzip it.</p>
-          <p class="when">The link in the email works for 72 hours.</p>
+          <svg viewBox="0 0 220 140" role="img" aria-label="An email from LinkedIn with a link, and the zip file it downloads.">
+            <rect class="f-s st-l" x="8" y="18" width="128" height="88" rx="8"/>
+            <path class="st-a" d="M8 26 l64 42 l64 -42" fill="none"/>
+            <rect class="f-s st-l" x="104" y="46" width="88" height="80" rx="8"/>
+            <path class="f-b" d="M112 54 h44 l12 12 v52 h-56 z"/>
+            <path class="st-a" d="M127 60 v8 M127 72 v8 M127 84 v8" stroke-width="3"/>
+            <rect class="f-i" x="119" y="94" width="16" height="12" rx="2"/>
+            <text class="t3" x="148" y="80">.zip</text>
+            <path class="st-ok" d="M174 30 v24 m-8 -8 l8 8 l8 -8" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h3>Download the zip</h3>
+          <p class="when">LinkedIn emails a link within 24 hours. No need to unzip.</p>
         </li>
         <li>
-          <h3>Open the files here</h3>
-          <p class="path">Open Network Circles, click <b>Open your LinkedIn zip</b> and pick the zip you downloaded. You can also drag it onto the page.</p>
-          <p class="when">10 to 30 seconds the first time, depending on your connection, while your browser loads the tool.</p>
-          <p><a class="btn ghost" id="openOwn" href="../web/?own=1&amp;know=Halcyon%20Freight%2C%20recruiter">Open Network Circles with my files</a></p>
+          <svg viewBox="0 0 220 140" role="img" aria-label="Network Circles in the browser: the zip goes onto the Open your LinkedIn zip button and stays in this tab.">
+            <rect class="f-s st-l" x="8" y="8" width="204" height="124" rx="8"/>
+            <rect class="f-b" x="8" y="8" width="204" height="18" rx="8"/><rect class="f-b" x="8" y="18" width="204" height="8"/>
+            <rect class="f-i" x="38" y="50" width="144" height="26" rx="5"/>
+            <text class="tb" x="110" y="67" text-anchor="middle">Open your LinkedIn zip</text>
+            <path class="f-b st-a" d="M150 92 h24 l8 8 v26 h-32 z"/>
+            <path class="st-a" d="M162 96 v4 M162 104 v4" stroke-width="2.5"/>
+            <path class="st-a" d="M146 100 q-16 -4 -22 -14" fill="none" stroke-dasharray="3 3"/>
+            <rect class="f-ok" x="26" y="100" width="12" height="10" rx="2"/><path class="st-ok" d="M28.5 100 v-4 a3.5 3.5 0 0 1 7 0 v4" fill="none" stroke-width="2"/>
+            <text class="t3" x="44" y="109">stays in this tab</text>
+          </svg>
+          <h3>Open it here</h3>
+          <p class="when">About 20 seconds the first time. Nothing is uploaded.</p>
+          <p><a class="btn ghost" id="openOwn" href="../web/?own=1&amp;know=Halcyon%20Freight%2C%20recruiter">Open with my files</a></p>
         </li>
         <li>
-          <h3>Type the companies or roles you're aiming for</h3>
-          <p class="path">Type them in the search box at the top, separated by commas. Click a name to see their circle and how you're connected, or download the list.</p>
-          <p class="when">Seconds.</p>
-          <p class="tip">Waiting for LinkedIn's email? Try the <a href="../web/?know=Halcyon%20Freight%2C%20recruiter">sample network</a> to see how the results work.</p>
+          <svg viewBox="0 0 220 140" role="img" aria-label="A search for Halcyon Freight and recruiter, with a list of the people you know there, each marked with the colour of their circle.">
+            <rect class="f-s st-l" x="8" y="8" width="204" height="124" rx="8"/>
+            <rect class="f-b st-a" x="20" y="20" width="180" height="22" rx="5"/>
+            <text class="t1" x="28" y="35">Halcyon Freight, recruiter</text>
+            <circle cx="30" cy="60" r="4" fill="#d77198"/><rect class="f-a" x="42" y="56" width="70" height="7" rx="3"/><rect class="f-l" x="118" y="56" width="70" height="7" rx="3"/>
+            <circle cx="30" cy="80" r="4" fill="#d77198"/><rect class="f-a" x="42" y="76" width="58" height="7" rx="3"/><rect class="f-l" x="106" y="76" width="82" height="7" rx="3"/>
+            <circle cx="30" cy="100" r="4" fill="#19a573"/><rect class="f-a" x="42" y="96" width="76" height="7" rx="3"/><rect class="f-l" x="124" y="96" width="64" height="7" rx="3"/>
+            <circle cx="30" cy="120" r="4" fill="#2a78d6"/><rect class="f-a" x="42" y="116" width="64" height="7" rx="3"/><rect class="f-l" x="112" y="116" width="76" height="7" rx="3"/>
+          </svg>
+          <h3>Search who you know</h3>
+          <p class="when">Companies or roles, separated by commas. Download the list as a CSV.</p>
         </li>
       </ol>
+      <p class="tip">Waiting for LinkedIn's email? <a href="../web/?know=Halcyon%20Freight%2C%20recruiter">Try the sample network</a> meanwhile.</p>
     </section>
 
     <section id="private" aria-labelledby="private-h">
       <h2 id="private-h">Your data stays with you</h2>
-      <div class="private">
-        <div class="card">
-          <h3>What happens to your files</h3>
-          <ul>
-            <li>Your browser reads them on your computer. They are never uploaded, here or anywhere else.</li>
-            <li>There's no account and no server that could keep a copy. Nothing about your network is saved, not even in your browser; the only thing it remembers is that you've seen its short introduction.</li>
-            <li>From the zip, only the files the tool uses are opened. Your messages and everything else in the archive are never even unpacked.</li>
-            <li>Close the tab and it's all gone.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>What the page does download</h3>
-          <ul>
-            <li>Its own code, from GitHub Pages, and a Python runtime (Pyodide) from the jsDelivr CDN, which runs the analysis in your browser.</li>
-            <li>That's code coming to you; none of your data goes back.</li>
-            <li>The code is open: you can <a href="https://github.com/Arak00/network-circles">read it on GitHub</a> or run it on your own machine.</li>
-            <li>An automated test opens the tool with an export, records every request the page makes, and fails if any of them carries data.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="limits" aria-labelledby="limits-h">
-      <h2 id="limits-h">What it can't tell you</h2>
-      <ul>
-        <li>Only people you're connected to. LinkedIn's export doesn't include who your connections know, so introductions through a friend of a friend can't be listed.</li>
-        <li>No locations, and nothing about how often you talk to someone: the export doesn't contain either.</li>
-        <li>Company names are matched as people typed them on their profiles. Spellings are merged where they're clearly the same company, but a renamed company may need its old name too.</li>
-        <li>Circle names are a best guess from the most common company and role in each group.</li>
+      <ul class="facts">
+        <li><b>Read on your computer.</b> Your files are never uploaded, and only the ones the tool needs are opened: your messages stay packed.</li>
+        <li><b>Nothing kept.</b> No account, no server, no copy. Close the tab and it's gone.</li>
+        <li><b>Checked on every change.</b> An automated test records every request the page makes and fails if one carries data. <a href="https://github.com/Arak00/network-circles">The code is open.</a></li>
       </ul>
     </section>
 
     <section aria-labelledby="faq-h">
       <h2 id="faq-h">Questions</h2>
-      <details><summary>Which files do I need?</summary><p>Just the zip LinkedIn sends you. The tool reads Connections.csv from it for the list, and Positions.csv, your own work history, to add the companies you've worked at to the map. If you've already unzipped it, select all the CSV files in the folder instead.</p></details>
-      <details><summary>My download has no Connections.csv</summary><p>At least one person has reported an archive without it. Request your data again and pick Connections on its own; LinkedIn says that can take up to 48 hours.</p></details>
-      <details><summary>Can I use it on my phone?</summary><p>You can try the sample network on a phone. For your own data you need a computer, because LinkedIn only offers the data download there.</p></details>
+      <details><summary>What can't it tell me?</summary><p>Only people you're connected to: the export doesn't say who they know, so friends of friends can't be listed. No locations either. Company names are matched as people typed them, so a renamed company may need its old name too.</p></details>
+      <details><summary>What does the page download?</summary><p>Its own code from GitHub Pages and a Python runtime (Pyodide) from the jsDelivr CDN, which runs the analysis in your browser. Code comes to you; none of your data goes back.</p></details>
+      <details><summary>My zip has no Connections.csv</summary><p>Request your data again and pick Connections on its own; LinkedIn says that can take up to 48 hours.</p></details>
+      <details><summary>Can I use it on my phone?</summary><p>The sample network, yes. For your own data you need a computer, because LinkedIn only offers the download there.</p></details>
       <details><summary>Is this made by LinkedIn?</summary><p>No. It's an independent open-source project that reads the files LinkedIn lets you download about yourself.</p></details>
     </section>
   </main>
