@@ -29,16 +29,23 @@ Read each task aloud, start a timer, and stop it when the tester gives an answer
 | Task | Job | Say to the tester | Right answer |
 |------|-----|-------------------|--------------|
 | T1 | J1 | "This is someone's LinkedIn network. Which is their biggest group of people, and about how many are in it?" | Cobblestone Cloudworks · data, 44. Saying "Unplaced, 59" is a fail: unplaced people are the ones in no circle, and the viewer should make that clear. |
-| T2 | J2 | "Find Goran Valcourt. Which group is he in? Name two other people in the same group." | Ashgrove Mobility · eng, plus any two of its members (check by hovering them). |
+| T2 | J2 | "Find Goran Valcourt. Which group is this person in? Name two other people in the same group." | Ashgrove Mobility · eng, plus any two of its members (check by hovering them). |
 | T3 | J3 | "In which month did this person add the most connections?" | September 2024 (24 people). August or October 2024 is a partial. |
 | T4 | J4 | "Switch to the view that shows organisations. The people who work at Halcyon Freight: which group are they in?" | Halcyon Freight · ops. |
 | T5 | J5 | "Find a skill that two different groups share, and name the skill and both groups." | Any skill drawn with links to two or more circles, for example Roadmapping. Verify by hovering the skill. |
+| T6 | Who do I know at a company (`research/findings.md`, job 1) | "A friend asks whether this person knows anyone at Kestrel Talent. How many people do they know there, and which group are those people in?" | 2 people, both in Glimmer Networks · eng. Today this only works for organisations in the person's own history or follows; record what the tester tries first, because that is the path a "who do I know at…" feature should take. |
+| T7 | Who did I meet at an event (job 4, provisional) | "This person went to Lakemoor Data Meetup #4. Who did they connect with in the week after it? How many, and which group are most of them in?" | 7 people, connected 8 to 15 November 2023; 5 of them in Cobblestone Cloudworks · data. |
 
 Then ask, without timing: "What did you expect to happen that didn't?" and "What was the most confusing thing on the screen?". Write down their words.
 
 ## Their own export (optional, private)
 
-If the tester has their own LinkedIn export, let them open it in the viewer for five minutes after the tasks and fill in `docs/tester-form.md`. Their files stay on their machine and you don't look at their screen during this part. Only the three scores and an optional comment without names come back to you.
+If the tester has their own LinkedIn export, let them open it in the viewer for five minutes after the tasks. Give them the one task that matches why they were recruited (`research/screener.md`), and only ask whether they managed it; don't look at the answer:
+
+- Job search, fundraising or selling: "Find someone you already know at a company you'd like an introduction to."
+- After an event: "Find the people you connected with after the last event you went to."
+
+Then they fill in `docs/tester-form.md`. Their files stay on their machine and you don't look at their screen during this part. Only the three scores and an optional comment without names come back to you.
 
 ## SUS questionnaire
 
@@ -61,13 +68,15 @@ Scoring: for odd items take the answer minus 1, for even items take 5 minus the 
 
 The viewer passes a job when at least four of the five testers succeed on its task without help. It passes overall when every job passes and the mean SUS score is 68 or higher. With five people these are rough signals rather than statistics: a task that two people fail points to a real problem, and the think-aloud notes say what it is.
 
+T6 and T7 are not part of the pass rule. They test the two jobs chosen in `research/findings.md`, one of which the viewer only half supports today; report their results next to the fake-door counts, as evidence for what to build next. `own_task` is yes or no for the task on the tester's own export.
+
 ## Recording results
 
 One row per tester in `docs/usability-results.csv`, which stays out of the repo if it holds anything identifying. Use codes (P1 to P5), never names:
 
 ```
-tester,T1,T1_s,T2,T2_s,T3,T3_s,T4,T4_s,T5,T5_s,sus1,sus2,sus3,sus4,sus5,sus6,sus7,sus8,sus9,sus10,notes
-P1,success,35,partial,80,success,20,fail,120,success,60,4,2,4,1,4,2,4,2,4,2,"looked for the timeline under the map first"
+tester,T1,T1_s,T2,T2_s,T3,T3_s,T4,T4_s,T5,T5_s,T6,T6_s,T7,T7_s,own_task,sus1,sus2,sus3,sus4,sus5,sus6,sus7,sus8,sus9,sus10,notes
+P1,success,35,partial,80,success,20,fail,120,success,60,partial,95,success,50,yes,4,2,4,1,4,2,4,2,4,2,"looked for the timeline under the map first"
 ```
 
 Outcomes are `success`, `partial` or `fail`; `_s` columns are seconds.
