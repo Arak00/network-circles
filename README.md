@@ -5,6 +5,10 @@ A small tool that turns your LinkedIn data export into a map of where your netwo
 <!-- Screenshot placeholder: add docs/screenshot.png of the synthetic demo here. -->
 ![Network map of the synthetic demo](docs/screenshot.png)
 
+## Who do I know at…
+
+Type the companies or roles you're aiming for in the side panel and the viewer lists the people you're connected to there, longest-known first, with the circle each one belongs to. They're highlighted on the map and you can download the list as a CSV. It's the use case that came out on top of the persona research in [research/findings.md](research/findings.md). [who/](who/) is a page that explains it and walks a visitor from requesting their LinkedIn data to their first search; `web/?know=Acme,recruiter` opens the viewer with a search filled in, and `&own=1` waits for the visitor's files instead of showing the demo.
+
 ## Quick start
 
 ```sh

@@ -33,7 +33,7 @@ Read each task aloud, start a timer, and stop it when the tester gives an answer
 | T3 | J3 | "In which month did this person add the most connections?" | September 2024 (24 people). August or October 2024 is a partial. |
 | T4 | J4 | "Switch to the view that shows organisations. The people who work at Halcyon Freight: which group are they in?" | Halcyon Freight · ops. |
 | T5 | J5 | "Find a skill that two different groups share, and name the skill and both groups." | Any skill drawn with links to two or more circles, for example Roadmapping. Verify by hovering the skill. |
-| T6 | Who do I know at a company (`research/findings.md`, job 1) | "A friend asks whether this person knows anyone at Kestrel Talent. How many people do they know there, and which group are those people in?" | 2 people, both in Glimmer Networks · eng. Today this only works for organisations in the person's own history or follows; record what the tester tries first, because that is the path a "who do I know at…" feature should take. |
+| T6 | Who do I know at a company (`research/findings.md`, job 1) | "A friend asks whether this person knows anyone at Kestrel Talent. How many people do they know there, and which group are those people in?" | 2 people, both in Glimmer Networks · eng. The "Who do I know at…" box in the side panel answers it directly; record what the tester tries first, and whether they notice the box without help. |
 | T7 | Who did I meet at an event (job 4, provisional) | "This person went to Lakemoor Data Meetup #4. Who did they connect with in the week after it? How many, and which group are most of them in?" | 7 people, connected 8 to 15 November 2023; 5 of them in Cobblestone Cloudworks · data. |
 
 Then ask, without timing: "What did you expect to happen that didn't?" and "What was the most confusing thing on the screen?". Write down their words.
@@ -68,7 +68,7 @@ Scoring: for odd items take the answer minus 1, for even items take 5 minus the 
 
 The viewer passes a job when at least four of the five testers succeed on its task without help. It passes overall when every job passes and the mean SUS score is 68 or higher. With five people these are rough signals rather than statistics: a task that two people fail points to a real problem, and the think-aloud notes say what it is.
 
-T6 and T7 are not part of the pass rule. They test the two jobs chosen in `research/findings.md`, one of which the viewer only half supports today; report their results next to the fake-door counts, as evidence for what to build next. `own_task` is yes or no for the task on the tester's own export.
+T6 and T7 are not part of the pass rule. They test the two jobs chosen in `research/findings.md`, one of which (event follow-up) the viewer only half supports today; report their results next to the fake-door counts, as evidence for what to build next. `own_task` is yes or no for the task on the tester's own export.
 
 ## Recording results
 

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who Do I Know</title>
+<meta name="description" content="Type the companies or roles you're aiming for and see who you already know there, from your own LinkedIn data. Your files never leave your browser.">
+<style>
+:root {
+  --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964;
+  --line: #e1e0d9; --axis: #c3c2b7; --link: #266fc7; --banner: #eef3fa; --ok: #19a573;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
+  --line: #2c2c2a; --axis: #383835; --link: #6da7ec; --banner: #17202b; --ok: #199e70; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
+  --line: #2c2c2a; --axis: #383835; --link: #6da7ec; --banner: #17202b; --ok: #199e70; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+a { color: var(--link); text-underline-offset: 2px; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+header.top { display: flex; align-items: center; gap: 12px; padding: 16px 0; font-size: 14px; }
+header.top .name { font-weight: 650; }
+header.top nav { margin-left: auto; display: flex; gap: 16px; flex-wrap: wrap; }
+h1 { font-size: clamp(30px, 5.2vw, 46px); line-height: 1.12; margin: 40px 0 14px; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 24px; line-height: 1.25; margin: 0 0 12px; text-wrap: balance; }
+h3 { font-size: 17px; margin: 0 0 6px; }
+p { margin: 0 0 12px; }
+.lead { font-size: 19px; color: var(--ink-2); max-width: 640px; }
+.ask { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 10px; max-width: 680px; }
+.ask label { flex-basis: 100%; font-size: 14px; color: var(--ink-2); }
+.ask input { flex: 1 1 260px; min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 10px 12px; }
+.btn { display: inline-block; font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 6px; padding: 10px 16px; cursor: pointer; border: 1px solid var(--ink); }
+.btn.primary { background: var(--ink); color: var(--surface); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--axis); }
+.btn:focus-visible, input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.promise { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink-2); margin: 0 0 28px; }
+.promise::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+figure { margin: 0 0 8px; }
+figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+section { padding: 48px 0 8px; }
+.gets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+.card p { color: var(--ink-2); font-size: 15px; margin: 0; }
+ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 12px; }
+ol.steps > li { counter-increment: s; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 16px 12px 64px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--axis); display: grid; place-items: center; font-weight: 650; }
+ol.steps .when { margin-bottom: 8px; }
+.when { font-size: 13px; color: var(--muted); }
+.path { font-size: 15px; color: var(--ink-2); }
+.path b { color: var(--ink); font-weight: 600; }
+.tip { font-size: 14px; background: var(--banner); border-radius: 6px; padding: 8px 10px; margin: 8px 0 0; }
+.private { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.private ul, .limits ul { margin: 0; padding-left: 20px; color: var(--ink-2); }
+.private li, .limits li { margin-bottom: 6px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
+summary { cursor: pointer; font-weight: 600; }
+details p { color: var(--ink-2); margin: 8px 0 0; font-size: 15px; }
+footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 20px 0 40px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="name">Network Circles</span>
+    <nav aria-label="Page"><a href="#steps">Use your own data</a><a href="#private">Privacy</a><a href="https://github.com/Arak00/network-circles">Source code</a></nav>
+  </header>
+
+  <main>
+    <h1>Who do you already know at the company you want?</h1>
+    <p class="lead">Type the companies or roles you're aiming for. You get the people you're already connected to there, which part of your network each one comes from, and how long you've known them. That's who to ask for an introduction.</p>
+
+    <form class="ask" action="../web/" method="get">
+      <label for="q">Companies or roles, separated by commas</label>
+      <input id="q" name="know" value="Halcyon Freight, recruiter" autocomplete="off">
+      <button class="btn primary" type="submit">Try it on a sample network</button>
+    </form>
+    <p class="promise">Your LinkedIn files are read inside your browser. Nothing is uploaded, and nothing is stored.</p>
+
+    <figure>
+      <picture>
+        <source srcset="know-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="know-light.png" width="1600" height="750" alt="Network Circles with the search 'Halcyon Freight, recruiter'. The side panel lists 24 people, grouped by search, each with their job, their circle and the date they connected. The matching people are highlighted on the network map.">
+      </picture>
+      <figcaption>A sample network of 300 fictional people. The people found are highlighted on the map; click one to see where they sit.</figcaption>
+    </figure>
+
+    <section aria-labelledby="gets">
+      <h2 id="gets">What you get</h2>
+      <div class="gets">
+        <div class="card"><h3>A list per company or role</h3><p>Everyone you're connected to who works there or has that job title, the people you've known longest first.</p></div>
+        <div class="card"><h3>Where each person comes from</h3><p>Their circle: the former employer, client or event that put them in your network. It tells you how you know them.</p></div>
+        <div class="card"><h3>A spreadsheet to work from</h3><p>Download the list as a CSV and plan your messages. It's built in your browser, like everything else.</p></div>
+      </div>
+    </section>
+
+    <section id="steps" aria-labelledby="steps-h">
+      <h2 id="steps-h">Get your own list in four steps</h2>
+      <p>The only waiting is for LinkedIn to prepare your data. Use a computer: LinkedIn doesn't offer the download on its phone app.</p>
+      <ol class="steps">
+        <li>
+          <h3>Ask LinkedIn for your data</h3>
+          <p class="path">On linkedin.com, click <b>Me</b>, then <b>Settings &amp; Privacy</b>, <b>Data privacy</b>, <b>Download your data</b>. Choose the larger archive and click <b>Request archive</b>.</p>
+          <p class="when">About 2 minutes. LinkedIn emails you when it's ready, within 24 hours.</p>
+        </li>
+        <li>
+          <h3>Download it and unzip it</h3>
+          <p class="path">Open the link in LinkedIn's email and download the zip file. Double-click it to unzip. You'll get a folder of CSV files, including <b>Connections.csv</b>.</p>
+          <p class="when">The link in the email works for 72 hours.</p>
+        </li>
+        <li>
+          <h3>Open the files here</h3>
+          <p class="path">Open Network Circles, click <b>Open your LinkedIn files</b> and select the CSV files from the folder (all of them, or at least Connections.csv and Positions.csv).</p>
+          <p class="when">10 to 30 seconds the first time, depending on your connection, while your browser loads the tool.</p>
+          <p><a class="btn ghost" id="openOwn" href="../web/?own=1&amp;know=Halcyon%20Freight%2C%20recruiter">Open Network Circles with my files</a></p>
+        </li>
+        <li>
+          <h3>Type the companies or roles you're aiming for</h3>
+          <p class="path">Use the <b>Who do I know at…</b> box. Click a name to see their place on the map and how you're connected, or download the list.</p>
+          <p class="when">Seconds.</p>
+          <p class="tip">Waiting for LinkedIn's email? Try the <a href="../web/?know=Halcyon%20Freight%2C%20recruiter">sample network</a> to see how the results work.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="private" aria-labelledby="private-h">
+      <h2 id="private-h">Your data stays with you</h2>
+      <div class="private">
+        <div class="card">
+          <h3>What happens to your files</h3>
+          <ul>
+            <li>Your browser reads them on your computer. They are never uploaded, here or anywhere else.</li>
+            <li>There's no account and no server that could keep a copy. Nothing about your network is saved, not even in your browser; the only thing it remembers is that you've seen its short introduction.</li>
+            <li>Close the tab and it's all gone.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>What the page does download</h3>
+          <ul>
+            <li>Its own code, from GitHub Pages, and a Python runtime (Pyodide) from the jsDelivr CDN, which runs the analysis in your browser.</li>
+            <li>That's code coming to you; none of your data goes back.</li>
+            <li>The code is open: you can <a href="https://github.com/Arak00/network-circles">read it on GitHub</a> or run it on your own machine.</li>
+            <li>An automated test opens the tool with an export, records every request the page makes, and fails if any of them carries data.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="limits" aria-labelledby="limits-h">
+      <h2 id="limits-h">What it can't tell you</h2>
+      <ul>
+        <li>Only people you're connected to. LinkedIn's export doesn't include who your connections know, so introductions through a friend of a friend can't be listed.</li>
+        <li>No locations, and nothing about how often you talk to someone: the export doesn't contain either.</li>
+        <li>Company names are matched as people typed them on their profiles. Spellings are merged where they're clearly the same company, but a renamed company may need its old name too.</li>
+        <li>Circle names are a best guess from the most common company and role in each group.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="faq-h">
+      <h2 id="faq-h">Questions</h2>
+      <details><summary>Which files do I need?</summary><p>Connections.csv is enough for the list. Positions.csv, your own work history, adds the companies you've worked at to the map. Selecting every CSV in the folder is simplest; the tool ignores what it doesn't use.</p></details>
+      <details><summary>My download has no Connections.csv</summary><p>At least one person has reported an archive without it. Request your data again and pick Connections on its own; LinkedIn says that can take up to 48 hours.</p></details>
+      <details><summary>Can I use it on my phone?</summary><p>You can try the sample network on a phone. For your own data you need a computer, because LinkedIn's data download and unzipping the archive both work best there.</p></details>
+      <details><summary>Is this made by LinkedIn?</summary><p>No. It's an independent open-source project that reads the files LinkedIn lets you download about yourself.</p></details>
+    </section>
+  </main>
+
+  <footer>
+    Network Circles is open source (MIT). <a href="https://github.com/Arak00/network-circles">GitHub</a> · <a href="../web/">The full network map</a>
+  </footer>
+</div>
+<script>
+// Carry the search typed at the top into the "open my files" link, so it runs as soon as the files are read.
+const q = document.getElementById("q"), own = document.getElementById("openOwn");
+const sync = () => { own.href = "../web/?own=1&know=" + encodeURIComponent(q.value.trim()); };
+q.addEventListener("input", sync); sync();
+</script>
+</body>
+</html>

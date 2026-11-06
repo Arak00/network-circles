@@ -94,7 +94,7 @@ function render(data, sourceText) {
   months.forEach((m) => perMonth[m - m0]++);
   const next = { data, G, clusters, collapsed: new Set(), m0, m1, cur: m1, perMonth, counts: {}, playing: null, edgeColor: T["--edge"],
     hasDates: months.length > 0, box: null, labels: Object.fromEntries(all.map((c) => [c.id, labelOf(c)])),
-    kindCount, hiddenKinds: new Set(), view: "map", mapPos, layerPos: null, boxes: new Map(), queue: [], hl: null, focus: null, near: null, pinned: false, mapCollapsed: null };
+    kindCount, hiddenKinds: new Set(), view: "map", mapPos, layerPos: null, boxes: new Map(), queue: [], hl: null, sel: null, selCircles: null, knowRows: [], focus: null, near: null, pinned: false, mapCollapsed: null };
   const box = (next.box = $("canvas").appendChild(document.createElement("div"))), old = S;
   try {
     S = next;  // reducers read S while sigma does its first render
@@ -109,7 +109,7 @@ function render(data, sourceText) {
   $("tip").hidden = true;
   wireHover();
   $("source").textContent = sourceText; $("empty").hidden = true;
-  buildLegend(); buildKinds(); buildMeta(); setupTimeline(); buildFind();
+  buildLegend(); buildKinds(); buildMeta(); setupTimeline(); buildFind(); buildKnow();
   ["vMap", "vLayers"].forEach((id) => $(id).setAttribute("aria-pressed", String(id === "vMap")));
   window.__netmap = S;  // for tests / recording
 }
@@ -337,6 +337,8 @@ function nodeReducer(k, a) {
   }
   if (S.hl != null && !S.focus && a.kind !== "head" &&
       ((a.kind === "person" || a.sup) ? a.cluster !== grp(S.hl) : !S.hlNear.has(k))) { r.color = T["--dim"]; r.label = null; r.zIndex = 0; }
+  if (S.sel && !S.focus && a.kind !== "head" && !(a.sup ? S.selCircles.has(a.cluster) : S.sel.has(k))) { r.color = T["--dim"]; r.label = null; r.zIndex = 0; }
+  else if (S.sel && !S.focus && a.kind === "person") { r.forceLabel = S.sel.size <= 30; r.zIndex = 2; }
   if (S.focus) {
     if (k === S.focus || S.near.has(k)) {
       // big circles: let sigma's label grid thin out the person names instead of piling 40 on top of each other
@@ -353,6 +355,10 @@ function edgeReducer(k, a) {
     return { ...a, color: T["--edge-focus"], size: Math.max(a.size, 1), zIndex: 1 };
   }
   if (S.hl != null && S.G.getNodeAttribute(s, "cluster") !== grp(S.hl) && S.G.getNodeAttribute(t, "cluster") !== grp(S.hl)) return { ...a, hidden: true };
+  if (S.sel) {  // a selection: only links that touch a selected person (or, in Layers, a circle holding one)
+    const inSel = (x) => S.sel.has(x) || (S.G.getNodeAttribute(x, "sup") && S.selCircles.has(S.G.getNodeAttribute(x, "cluster")));
+    if (!inSel(s) && !inSel(t)) return { ...a, hidden: true };
+  }
   // Map: faint person links (layer links only on focus). Layers: links into the layers, never person-person.
   if (S.view === "map" ? a.layer || a.weight < MIN_W : !a.layer) return { ...a, hidden: true };
   return { ...a, color: a.layer ? T["--layer-edge"] : S.edgeColor };
@@ -479,9 +485,9 @@ function buildFind() {
   });
   $("find").value = "";
 }
-function find(q) {
-  const k = S && S.byLabel.get(q.trim());
-  if (!k) return;
+function find(q) { const k = S && S.byLabel.get(q.trim()); if (k) goTo(k); }
+// Pin a node and bring it into view: unhide its kind, unfold its circle, zoom, show and announce its tooltip.
+function goTo(k) {
   const a = S.G.getNodeAttributes(k);
   if (S.hiddenKinds.has(a.kind)) { S.hiddenKinds.delete(a.kind); buildKinds(); }
   if (a.orphan && S.view === "map") setView("layers");
@@ -492,6 +498,87 @@ function find(q) {
   if (d) S.renderer.getCamera().animate({ x: d.x, y: d.y, ratio: 0.35 }, { duration: reduceMotion.matches ? 0 : 500 }).then(done);
   else done();
 }
+
+// ---------- who do I know at… ----------
+// The job the persona research ranked first (research/findings.md): given companies or role words, list the people
+// you are already connected to there, longest-known first, with their circle; highlight them and hand back a CSV.
+// Only first-degree connections: LinkedIn's export has nobody else, and no locations.
+const norm = (s) => (s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const LEGAL = new Set("inc ltd llc llp plc gmbh ag sa sas sarl bv nv co corp corporation limited company".split(" "));
+const coKey = (s) => norm(s).split(" ").filter((t) => t && !LEGAL.has(t)).join(" ");
+// -> [{ q, rows: [{ k, n, by }] }]; a person is listed once, under the first query that matched them
+function whoKnow(text) {
+  const seen = new Set();
+  return text.split(/[\n,;]+/).map((q) => q.trim()).filter(Boolean).map((q) => {
+    const ck = coKey(q), words = norm(q).split(" ").filter(Boolean), rows = [];
+    if (ck) for (const n of S.data.nodes) {
+      const k = String(n.id), co = ` ${coKey(n.company)} `, ti = ` ${norm(n.title)}`;
+      const by = co.includes(` ${ck} `) ? "company" : words.every((w) => ti.includes(` ${w}`)) ? "title" : null;  // title: word starts
+      if (by && !seen.has(k)) { seen.add(k); rows.push({ k, n, by }); }
+    }
+    rows.sort((a, b) => (a.n.connected_on || "9") .localeCompare(b.n.connected_on || "9") || a.n.name.localeCompare(b.n.name));
+    return { q, rows };
+  });
+}
+function buildKnow() {
+  const top = {};  // quick picks: the companies you know most people at
+  S.data.nodes.forEach((n) => { if (n.company) top[n.company] = (top[n.company] || 0) + 1; });
+  const picks = $("knowPicks"); picks.innerHTML = "";
+  Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([c]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = c;
+    b.onclick = () => { const v = $("knowQ").value.trim(); $("knowQ").value = v ? `${v}, ${c}` : c; runKnow(); };
+    picks.appendChild(b);
+  });
+  clearKnow();
+}
+function clearKnow() {
+  S.sel = null; S.selCircles = null; S.knowRows = [];
+  $("knowList").innerHTML = ""; $("knowSummary").textContent = ""; $("knowCsv").hidden = $("knowClear").hidden = true;
+  S.renderer.refresh();
+}
+function runKnow() {
+  if (!S) return;
+  const groups = whoKnow($("knowQ").value), list = $("knowList"), all = groups.flatMap((g) => g.rows);
+  clearFocus(); list.innerHTML = "";
+  if (!groups.length) return clearKnow();
+  S.knowRows = groups.flatMap((g) => g.rows.map((r) => ({ ...r, q: g.q })));
+  S.sel = new Set(all.map((r) => r.k)); S.selCircles = new Set(all.map((r) => S.G.getNodeAttribute(r.k, "cluster")));
+  for (const g of groups) {
+    const h = document.createElement("li"); h.className = "kq";
+    h.textContent = g.rows.length ? `${g.q}: ${g.rows.length} ${g.rows.length === 1 ? "person" : "people"}` : `${g.q}: nobody you're connected to`;
+    list.appendChild(h);
+    for (const r of g.rows.slice(0, 100)) {
+      const li = document.createElement("li"), b = document.createElement("button"), n = r.n;
+      b.type = "button"; b.className = "kp";
+      const name = document.createElement("b"); name.textContent = n.name;
+      const what = document.createElement("span"); what.textContent = [n.title, n.company].filter(Boolean).join(" at ");
+      const how = document.createElement("span");
+      how.textContent = `${S.labels[n.cluster]} · ${n.connected_on ? "connected " + fmtDate(n.connected_on) : "connection date unknown"}`;
+      b.append(name, what, how);
+      b.onclick = () => goTo(r.k);
+      li.appendChild(b); list.appendChild(li);
+    }
+    if (g.rows.length > 100) { const m = document.createElement("li"); m.className = "kq"; m.textContent = `+${g.rows.length - 100} more in the CSV`; list.appendChild(m); }
+  }
+  const hit = groups.filter((g) => g.rows.length).length;
+  $("knowSummary").textContent = all.length
+    ? `${all.length} ${all.length === 1 ? "person" : "people"} for ${hit} of ${groups.length} ${groups.length === 1 ? "search" : "searches"}, longest-known first. They're highlighted on the map.`
+    : "Nobody you're connected to matches. Only your own connections are in the export, so people you could reach through them can't be listed.";
+  $("knowCsv").hidden = !all.length; $("knowClear").hidden = false;
+  S.renderer.refresh();
+}
+function knowCsv() {
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [["search", "matched on", "name", "title", "company", "circle", "connected on"].map(esc).join(",")];
+  for (const r of S.knowRows) lines.push([r.q, r.by, r.n.name, r.n.title, r.n.company, S.labels[r.n.cluster], r.n.connected_on || ""].map(esc).join(","));
+  const a = document.createElement("a");  // built in this tab; nothing is sent anywhere
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  a.download = "who-i-know.csv"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$("knowForm").addEventListener("submit", (e) => { e.preventDefault(); runKnow(); });
+$("knowCsv").addEventListener("click", knowCsv);
+$("knowClear").addEventListener("click", () => { $("knowQ").value = ""; clearKnow(); });
 
 // ---------- side panel ----------
 function buildLegend() {
@@ -638,6 +725,7 @@ async function runFiles(files) {
     status("Drawing…"); await tick();
     const data = JSON.parse(out);
     render(data, `Your export: ${data.meta.n_people} people, processed in this tab`);
+    if ($("knowQ").value.trim()) runKnow();  // a search carried over from the showcase page (?know=) runs on your data
     status(`Done. ${data.meta.n_clusters} circles from ${csv.map((f) => f.name).join(", ")}. Nothing was uploaded.`);
   } catch (e) { console.error(e); status("Could not process the files: " + (e.message || e).toString().split("\n").slice(-2).join(" "), true); }
   finally { busy = false; $("pick").disabled = false; }
@@ -652,7 +740,9 @@ $("find").addEventListener("change", (e) => find(e.target.value));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S && S.focus && !$("how").open) { clearFocus(); $("tip").hidden = true; $("live").textContent = ""; } });
 $("find").addEventListener("keydown", (e) => { if (e.key === "Enter") find(e.target.value); if (e.key === "Escape") { e.target.value = ""; clearFocus(); } });
 $("howBtn").addEventListener("click", () => $("how").showModal());
-try { if (!localStorage.getItem("nc.seenHow")) { localStorage.setItem("nc.seenHow", "1"); $("how").showModal(); } } catch (e) { /* storage blocked: skip */ }
+// Visitors arriving from the showcase page (?know= or ?own=) have already read how it works.
+const fromShowcase = /[?&](know|own)=/.test(location.search);
+try { if (!fromShowcase && !localStorage.getItem("nc.seenHow")) { localStorage.setItem("nc.seenHow", "1"); $("how").showModal(); } } catch (e) { /* storage blocked: skip */ }
 $("pick").addEventListener("click", () => $("files").click());
 $("files").addEventListener("change", (e) => { if (e.target.files.length) runFiles(e.target.files); e.target.value = ""; });
 // the whole page is the drop target; the banner highlights while files hover
@@ -699,8 +789,22 @@ applyMotionPref();
 
 (async () => {
   // Static demo build (src/build_demo.py) embeds the synthetic graph; there is no drop mode there.
-  if (window.DEMO_GRAPH) return render(window.DEMO_GRAPH, `Synthetic demo: ${window.DEMO_GRAPH.meta.n_people} fictional people`);
-  const p = new URLSearchParams(location.search).get("data") || "../demo/graph.json";
+  if (window.DEMO_GRAPH) {
+    render(window.DEMO_GRAPH, `Synthetic demo: ${window.DEMO_GRAPH.meta.n_people} fictional people`);
+    const know = new URLSearchParams(location.search).get("know");
+    if (know) { $("knowQ").value = know; runKnow(); }
+    return;
+  }
+  const qs = new URLSearchParams(location.search);
+  if (qs.get("know")) $("knowQ").value = qs.get("know");
+  // ?own=1 (from the showcase page's "open my files" step): wait for the visitor's files instead of showing the demo
+  if (qs.get("own") === "1") {
+    $("source").textContent = "Waiting for your files";
+    $("empty").textContent = "Click Open your LinkedIn files above and select the CSV files from the folder you unzipped (at least Connections.csv). They're read in this tab and never uploaded." + (qs.get("know") ? " Your search will run as soon as they're read." : "");
+    $("pick").focus();
+    return;
+  }
+  const p = qs.get("data") || "../demo/graph.json";
   const url = new URL(p, location.href);
   const fail = (msg) => { $("source").textContent = "Not loaded"; $("empty").textContent = msg; };
   if (url.origin !== location.origin) return fail("Only graph.json files served next to this page can be loaded. Open your export instead.");
@@ -709,6 +813,7 @@ applyMotionPref();
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const data = await res.json();
     render(data, p === "../demo/graph.json" ? `Synthetic demo: ${data.meta.n_people} fictional people` : `Loaded ${url.pathname}`);
+    if (qs.get("know")) runKnow();  // ?know=Halcyon Freight,recruiter (showcase page links)
     // recording hook: ?autoplay=1 plays the timeline once after layout (skipped under reduced motion)
     if (new URLSearchParams(location.search).get("autoplay") === "1" && !reduceMotion.matches && S.hasDates) { setMonth(S.m0); play(); }
   } catch (e) { console.error(e); fail(`Could not load ${p} (${e.message}). Serve the repo root with python3 -m http.server, or open your export.`); }

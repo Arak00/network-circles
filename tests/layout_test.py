@@ -77,6 +77,8 @@ def check_page(page, errors, case, width, theme, fails, crossings):
         page.click("#vLayers"); state("layers")
         page.evaluate(PIN_TOP); state("layers+pin"); page.evaluate("clearFocus()")
         page.click("#vMap"); state("map-again")
+    if page.evaluate("document.querySelector('#knowPicks .chip') !== null"):  # who-do-I-know selection on the map
+        page.click("#knowPicks .chip"); state("map+know"); page.click("#knowClear")
     if errors:
         fails.append(f"{case}/{width}/{theme}: console errors {errors[:2]}")
 
@@ -106,6 +108,22 @@ def keyboard(page, fails):
         fails.append("keyboard: leaving the circle list did not clear the highlight")
 
 
+def know(page, fails):
+    """Who do I know at…: known answers on the demo, CSV contents, clear."""
+    page.fill("#knowQ", "Kestrel Talent"); page.click("#knowForm button[type=submit]"); page.evaluate(FRAME)
+    got = page.evaluate("""(() => ({ n: window.__netmap.sel.size, circles: [...document.querySelectorAll('#knowList .kp span:last-child')].map(e => e.textContent) }))()""")
+    if got["n"] != 2 or not all(c.startswith("Glimmer Networks · eng · ") for c in got["circles"]):
+        fails.append(f"know: Kestrel Talent should give 2 people in Glimmer Networks · eng, got {got}")
+    with page.expect_download() as dl:
+        page.click("#knowCsv")
+    rows = open(dl.value.path(), encoding="utf-8-sig").read().strip().split("\n")
+    if len(rows) != 3 or not rows[0].startswith('"search","matched on","name"'):
+        fails.append(f"know: CSV should have a header and 2 rows, got {len(rows)} lines")
+    page.click("#knowClear"); page.evaluate(FRAME)
+    if page.evaluate("window.__netmap.sel !== null"):
+        fails.append("know: Clear did not remove the selection")
+
+
 def axe(page, where, fails, summary):
     page.add_script_tag(url=AXE)
     res = page.evaluate("axe.run(document, { resultTypes: ['violations'] }).then(r => r.violations.map(v => "
@@ -128,6 +146,9 @@ def main(argv):
                     ctx = browser.new_context(viewport={"width": width, "height": 900}, color_scheme=theme, reduced_motion="reduce")
                     ctx.add_init_script("try { localStorage.setItem('nc.seenHow', '1') } catch (e) {}")
                     page, errors = ctx.new_page(), []
+                    # Headless Chromium draws WebGL in software: with ~190k edges (the 3,000-person case) one frame can
+                    # take 15 s+ of native time that a real GPU doesn't need, so give clicks room instead of failing.
+                    page.set_default_timeout(120000)
                     page.on("console", lambda m: m.type == "error" and errors.append(m.text))
                     page.on("pageerror", lambda e: errors.append(str(e)))
                     t0 = time.time()
@@ -137,6 +158,7 @@ def main(argv):
                     check_page(page, errors, case, width, theme, fails, crossings)
                     if case == "demo" and width == 1400 and theme == "light":
                         keyboard(page, fails)
+                        know(page, fails)
                     if "--axe" in argv and case == "demo":
                         axe(page, f"{width}/{theme}", fails, axe_summary)
                     ctx.close()

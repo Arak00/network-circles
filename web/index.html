@@ -57,6 +57,16 @@ aside { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflo
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
 h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 6px; }
 .hint { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+#knowQ { box-sizing: border-box; width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--axis); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+#knowForm .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.picks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; color: var(--ink-2); }
+#knowSummary { margin: 8px 0 0; }
+#knowList { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 320px; overflow: auto; }
+#knowList .kq { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-top: 6px; }
+#knowList .kp { width: 100%; text-align: left; border-color: transparent; background: none; padding: 4px 6px; display: grid; }
+#knowList .kp:hover, #knowList .kp:focus-visible { border-color: var(--axis); background: var(--bg); }
+#knowList .kp span { font-size: 12px; color: var(--ink-2); }
 #legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 #legend button { width: 100%; display: grid; grid-template-columns: 12px minmax(0,1fr) auto; gap: 8px; align-items: center;
   text-align: left; border-color: transparent; background: none; padding: 4px 6px; }
@@ -102,7 +112,7 @@ dialog h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var
 dialog h3 { font-size: 13px; margin: 14px 0 4px; }
 dialog ol, dialog ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--ink-2); }
 dialog .row { display: flex; justify-content: flex-end; margin-top: 16px; }
-dialog .primary, #pick { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+dialog .primary, #knowForm .primary, #pick { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 #empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--ink-2); padding: 16px; text-align: center; }
 #empty[hidden] { display: none; }
 #canvas, #canvas > div { position: absolute; inset: 0; }
@@ -139,14 +149,15 @@ dialog .primary, #pick { background: var(--ink); color: var(--surface); border-c
     <h2 id="howTitle">How Network Circles works</h2>
     <h3>1. Get your files from LinkedIn</h3>
     <ol>
-      <li>On LinkedIn, open <b>Settings → Data privacy → Get a copy of your data</b>.</li>
-      <li>Choose <b>the larger data archive</b>. The smaller one has no skills, endorsements or posts.</li>
-      <li>LinkedIn emails you a link within a day. Download the zip and unzip it.</li>
+      <li>On a computer, open LinkedIn and click <b>Me → Settings &amp; Privacy → Data privacy → Download your data</b>.</li>
+      <li>Choose <b>the larger data archive</b> and click <b>Request archive</b>. The smaller one has no skills, endorsements or posts.</li>
+      <li>LinkedIn emails you a link within 24 hours; it works for 72 hours. Download the zip and unzip it.</li>
     </ol>
     <h3>2. Open them here</h3>
     <ul>
       <li>Click <b>Open your LinkedIn files</b> and select all the CSV files, or drop them on the page.</li>
       <li>Everything runs in this browser tab. Nothing is uploaded or stored.</li>
+      <li>To find who you already know at a company, use <b>Who do I know at…</b> in the side panel. <a href="../who/">More about it</a>.</li>
     </ul>
     <h3>3. Read the map</h3>
     <ul>
@@ -183,6 +194,18 @@ dialog .primary, #pick { background: var(--ink); color: var(--surface); border-c
       </div>
     </section>
     <aside>
+      <div class="card" id="knowCard">
+        <h2>Who do I know at…</h2>
+        <p class="hint">Companies or roles, separated by commas. Lists the people you're connected to there, longest-known first. Nothing leaves this tab.</p>
+        <form id="knowForm">
+          <label for="knowQ" class="vh">Companies or roles</label>
+          <textarea id="knowQ" rows="2" placeholder="Halcyon Freight, recruiter" autocomplete="off"></textarea>
+          <div class="picks" id="knowPicks" aria-label="Companies you know most people at"></div>
+          <div class="row"><button type="submit" class="primary">Find</button><button type="button" id="knowCsv" hidden>Download CSV</button><button type="button" id="knowClear" class="link" hidden>Clear</button></div>
+        </form>
+        <p id="knowSummary" class="hint" role="status"></p>
+        <ol id="knowList"></ol>
+      </div>
       <div class="card">
         <h2>Circles</h2>
         <p class="hint">Click one to fold its people into a single dot. Names are generated from the top company and role.</p>
