@@ -31,7 +31,7 @@ const LABELLED = new Set(["skill", "org", "group", "event", "topic", "you"]);  /
 // Zooming in grows dots with √zoom but gaps with zoom, and zooming out past the fit is blocked: nodes can't overlap.
 const STEP = 4, DOT_K = 0.42, GAP = 6, BAND = 14;
 const MAX_LABELLED = 20;    // a pin or a search never names more people than this on the map
-const VIEWS = ["list", "map", "circles"];
+const VIEWS = ["ways", "list", "map", "circles"];
 
 let S = null;               // current view state
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -40,7 +40,7 @@ const darkMQ = matchMedia("(prefers-color-scheme: dark)");
 const isDark = () => { const t = document.documentElement.dataset.theme; return t ? t === "dark" : darkMQ.matches; };
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const T = {};               // theme tokens the canvas needs, re-read on theme change
-const readTokens = () => ["--ink", "--ink-2", "--edge", "--small", "--unplaced", "--layer", "--layer-edge", "--surface", "--accent", "--dim", "--edge-focus", "--muted", "--line"]
+const readTokens = () => ["--ink", "--ink-2", "--edge", "--small", "--unplaced", "--layer", "--layer-edge", "--surface", "--accent", "--dim", "--edge-focus", "--muted", "--line", "--k-warm", "--k-route", "--k-fresh", "--k-none"]
   .forEach((v) => { T[v] = css(v); });
 const colorOf = (g) => (g < 0 ? T["--unplaced"] : g >= SMALL ? T["--small"] : PAL[isDark() ? "dark" : "light"][g]);
 // A circle's colour washed towards the surface: what everyone outside a search or pin is drawn in, so circles stay
@@ -56,6 +56,7 @@ function prng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; 
 const labelOf = (c) => (c.id < 0 ? "Not in a circle" : c.label || `Circle ${c.id}`);  // one display label everywhere
 // what holds a circle together (netmap.basis), so a wrong circle can be reported by its kind without sharing the export
 const BASIS = { company: "Same company", dates: "Added around the same time", both: "Company and timing" };
+const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 function status(msg, err) { $("status").textContent = msg; $("status").className = err ? "err" : ""; }
 // A/B hook: every event worth comparing between the three layouts goes through here. Nothing is sent anywhere today;
@@ -139,7 +140,7 @@ function render(data) {
   const next = { data, G, clusters, discs, collapsed: new Set(), m0, m1, cur: m1, perMonth, counts: {}, playing: null, edgeColor: T["--edge"],
     hasDates: months.length > 0, box: null, mapBBox, discOf: new Map(discs.map((d) => [d.c, d])), labels: Object.fromEntries(all.map((c) => [c.id, labelOf(c)])), dot: 3,
     kindCount, hiddenKinds: new Set(), view: "map", mapPos, layerPos: null, boxes: new Map(), queue: [], hl: null, sel: null, selCircles: null,
-    knowRows: [], focus: null, near: null, nearLabel: null, pinned: false, listed: null };
+    knowRows: [], focus: null, near: null, nearLabel: null, pinned: false, listed: null, page: $("main").dataset.view };
   const box = (next.box = $("canvas").appendChild(document.createElement("div"))), old = S;
   next.bg = box.appendChild(document.createElement("canvas"));  // disc outlines and result rings, under sigma's canvases
   next.bg.setAttribute("aria-hidden", "true"); next.bg.style.cssText = "position:absolute;inset:0;width:100%;height:100%";
@@ -160,7 +161,7 @@ function render(data) {
   $("tip").hidden = true;
   wireHover();
   $("empty").hidden = true;
-  buildLegend(); buildKinds(); buildMeta(); setupTimeline(); buildKnow();
+  buildLegend(); buildKinds(); buildMeta(); setupTimeline(); buildKnow(); buildWays();
   ["vMap", "vLayers"].forEach((id) => $(id).setAttribute("aria-pressed", String(id === "vMap")));
   sizeDots(); S.renderer.refresh();
   window.__netmap = S;  // for tests / recording
@@ -395,6 +396,7 @@ function nodeReducer(k, a) {
 // you can still see which circle is which. Sizes are fixed by sizeDots so dots never touch.
 function mapNode(k, a, r) {
   const person = a.kind === "person";
+  if (person && S.page === "ways" && S.ways) return waysNode(k, a, r);
   r.size = person ? S.dot : S.dot * 1.4;
   if (!person) { r.forceLabel = true; r.zIndex = 2; r.labelLeft = a.x < 0; }  // ring labels point outwards
   // what stays in full colour: the pin and its links, else the circle you point at in the list, else the search results
@@ -445,7 +447,7 @@ function edgeReducer(k, a) {
 // by priority and a label that would overlap one already drawn is skipped. In the Map a label may also not cover any
 // dot but its own: a person whose name doesn't fit beside their dot gets a callout just outside their circle's dots,
 // with a thin leader line. Circle names go above their dots. At most MAX_LABELLED people are named at once.
-const LABEL_RANK = (d) => (d.key === S.focus ? 0 : d.kind === "head" ? 1 : d.sup ? 2 : d.kind !== "person" ? 3 : 4);
+const LABEL_RANK = (d) => (d.key === S.focus || (S.page === "ways" && S.selLabel && S.selLabel.has(d.key)) ? 0 : d.kind === "head" ? 1 : d.sup ? 2 : d.kind !== "person" ? 3 : 4);
 function drawLabel(ctx, d, st) { if (d.label) S.queue.push([ctx, d, st]); }
 function drawHover(ctx, d, st) { if (d.label && S.view === "layers") paintLabel(ctx, d, st, true); }
 function flushLabels() {
@@ -622,6 +624,7 @@ function wireHover() {
   r.on("clickNode", ({ node }) => {
     if (S.G.getNodeAttribute(node, "kind") === "head") return;
     tip.hidden = true;
+    if (S.page === "ways" && S.ways && S.ways.coOf.has(node)) { clearFocus(); waysPick(S.ways.coOf.get(node), true); return; }
     S.pinned && S.focus === node ? clearFocus() : (setFocus(node, true), track("pin:map"));
   });
   r.on("clickStage", clearFocus);
@@ -975,15 +978,167 @@ function applyMotionPref() { $("play").disabled = reduceMotion.matches || !S || 
 // ?view= wins (a usability session or an A/B link assigns it, and it isn't remembered); otherwise the visitor's last
 // choice; otherwise the list. The parts and the state don't change, only where they sit.
 function setPage(v, save = true) {
-  if (!VIEWS.includes(v)) v = "list";
+  if (!VIEWS.includes(v)) v = "ways";
+  const was = $("main").dataset.view;
   $("main").dataset.view = v;
   document.querySelectorAll("#pageView button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
   if (save) try { localStorage.setItem("nc.view", v); } catch (e) { /* storage blocked: not remembered */ }
   track("view:" + v);
   if (!S) return;
+  S.page = v;
+  if (v === "ways") { if (S.view !== "map") setView("map"); clearFocus(); waysShow(); }
+  else if (was === "ways") { clearKnow(); setView(S.view); $("mapCap").textContent = "One disc per circle. Your results in full colour."; }
   S.shownPin = undefined; showPinned();
   requestAnimationFrame(() => { if (S.box.clientWidth) { S.renderer.resize(); sizeDots(); S.renderer.refresh(); } });
 }
+// ---------- ways in: companies where you know someone, best way in first ----------
+// Reasons come from the export alone: a former colleague now elsewhere or an endorsement (knows your work), a recruiter
+// or senior title (can route an intro), an event or a connection in the last year (will remember you).
+// ponytail: fixed weights 3/2/1 plus a little for head count; a rule of thumb shown with its reasons, not a model.
+const WAYS = { warm: "Know your work", route: "Can route an intro", fresh: "Will remember you", follow: "Companies you follow" };
+const WAY_RANK = ["warm", "route", "fresh"];
+function buildWays() {
+  const d = S.data, L = d.layers || { nodes: [], edges: [] }, generic = new Set((d.meta.generic || []).map(coKey));
+  const org = (how) => new Set(L.nodes.filter((n) => n.kind === "org" && n.how === how).map((n) => coKey(n.label)));
+  const worked = org("you worked here"), followed = org("you follow it"), studied = org("you studied here"), places = [...worked, ...studied];
+  const label = Object.fromEntries(L.nodes.map((n) => [n.id, n.label])), endorsed = {}, met = {};
+  for (const e of L.edges) {
+    if (e.kind === "endorsed you for" && !(e.s in endorsed)) endorsed[e.s] = label[e.t];
+    if (e.kind === "connected after") met[e.s] = label[e.t];
+  }
+  // spelling variants count as the same place ("AshGrove" and "Ashgrove Mobility"): same first word, one name starts the other
+  const isMine = (k) => places.some((m) => m === k || (m.split(" ")[0] === k.split(" ")[0] && (m.startsWith(k) || k.startsWith(m))));
+  const circleCo = Object.fromEntries(d.clusters.filter((c) => c.id >= 0 && c.basis !== "dates").map((c) => [c.id, (c.label || "").split(" · ")[0]]));
+  const last = d.nodes.map((n) => n.connected_on).filter(Boolean).sort().pop();
+  const ago = (s) => (s && last ? (new Date(last) - new Date(s)) / 2.63e9 : 999);  // months
+  const info = new Map(), byK = new Map();
+  for (const n of d.nodes) {
+    const r = [], k = coKey(n.company), was = circleCo[n.cluster], m = ago(n.connected_on);
+    if (was && worked.has(coKey(was)) && coKey(was) !== k) r.push({ t: `Worked with you at ${was}`, w: 3, k: "warm" });
+    if (endorsed[n.id]) r.push({ t: `Endorsed you for ${endorsed[n.id]}`, w: 3, k: "warm" });
+    if (n.role === "recruiting/hr") r.push({ t: "Recruiter", w: 2, k: "route" });
+    if (n.role === "founder/exec") r.push({ t: "Senior", w: 2, k: "route" });
+    if (met[n.id]) r.push({ t: `Met at ${met[n.id]}`, w: 1, k: "fresh" });
+    if (m <= 12) r.push({ t: `Added ${monthName(monthOf(n.connected_on))}`, w: 1, k: "fresh" });
+    const door = k && !generic.has(k) && !isMine(k);
+    const p = { n, r, k, s: r.reduce((t, x) => t + x.w, 0) - (m > 72 ? 0.5 : 0) + Math.max(0, 1 - m / 120) * 0.5,
+                kind: !door ? (k && isMine(k) ? "mine" : "none") : WAY_RANK.find((x) => r.some((y) => y.k === x)) || "none" };
+    info.set(String(n.id), p);
+    if (!door) continue;
+    if (!byK.has(k)) byK.set(k, { name: n.company.trim(), k, people: [] });
+    byK.get(k).people.push(p);
+  }
+  for (const c of byK.values()) {
+    c.people.sort((a, b) => b.s - a.s); c.best = c.people[0];
+    c.score = c.best.s + 0.6 * Math.log2(c.people.length);
+    c.follow = followed.has(c.k);
+    c.kinds = new Set(c.people.flatMap((p) => p.r.map((x) => x.k))); if (c.follow) c.kinds.add("follow");
+  }
+  const rows = [...byK.values()].sort((a, b) => b.follow - a.follow || b.score - a.score);
+  const coOf = new Map(); for (const c of rows) for (const p of c.people) coOf.set(String(p.n.id), c.k);
+  S.ways = { rows, byK, info, coOf, only: null, sel: null, hover: null, shown: 10, open: new Set() };
+  const count = (k) => rows.filter((c) => c.kinds.has(k)).length, warm = count("warm");
+  $("waysTitle").innerHTML = `You have a way into <b>${rows.length}</b> ${rows.length === 1 ? "company" : "companies"}.`;
+  $("waysSub").textContent = !rows.length ? "No one in this export has a company we can use." : warm
+    ? `At ${warm} of them, someone already knows your work. They're at the top, with who to ask and why.`
+    : "They're ranked by who could get you in: recruiters and senior people first, then people you met recently.";
+  $("waysStats").innerHTML = Object.entries(WAYS).filter(([k]) => k !== "follow" || followed.size).map(([k, t]) =>
+    `<button type="button" class="wstat" data-k="${k}" aria-pressed="false"><i class="${k === "follow" ? "follow" : ""}" style="${k === "follow" ? "" : `background:var(--k-${k})`}"></i><strong>${count(k)}</strong><span>${t}</span></button>`).join("");
+  const mine = d.nodes.filter((n) => info.get(String(n.id)).kind === "mine").length;
+  $("waysNote").textContent = (places.length ? `The ${plural(mine, "person", "people")} at places you worked or studied are grey on the map and left off the board; former colleagues who moved on count at their new company. ` : "")
+    + "It's a rule of thumb from your export, not a prediction. Each row says why.";
+  $("waysQ").value = "";
+  waysBoard();
+  if (S.page === "ways") waysShow();
+}
+// Map colours on the Ways in page: the kind of way in; what isn't picked is washed out
+function waysNode(k, a, r) {
+  const p = S.ways.info.get(k), base = T["--k-" + (p && p.kind !== "mine" ? p.kind : "none")] || T["--k-none"];
+  const on = S.focus ? k === S.focus : S.sel ? S.sel.has(k) : null;
+  r.size = S.dot; r.color = base;
+  if (on === false) { r.color = mix(base, T["--surface"], 0.82); r.label = null; r.zIndex = 0; return r; }
+  if (on === null && p && (p.kind === "mine" || p.kind === "none")) r.color = mix(base, T["--surface"], p.kind === "mine" ? 0.55 : 0.2);
+  if (S.selLabel && S.selLabel.has(k)) { r.forceLabel = true; r.size = S.dot * 1.5; r.zIndex = 3; r.label = `Ask ${a.label}`; }
+  else if (on) { r.size = S.dot * 1.25; r.zIndex = 1; }
+  return r;
+}
+function waysMatch(c, q) {
+  return (!S.ways.only || c.kinds.has(S.ways.only)) && (!q || c.k.includes(coKey(q)) || c.people.some((p) => norm(`${p.n.name} ${p.n.title} ${ROLE_WORD[p.n.role] || ""}`).includes(norm(q))));
+}
+function waysRow(c) {
+  const W = S.ways, b = c.best, n = b.n, init = n.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("");
+  const short = (p) => { const w = p.n.name.split(/\s+/); return w.length > 1 ? `${w[0]} ${w[1][0]}.` : w[0]; };
+  const others = c.people.slice(1, 4).map(short), open = W.open.has(c.k);
+  const pill = (x) => `<span class="${x.k}">${esc(x.t)}</span>`;
+  const why = b.r.length ? b.r.map(pill).join("") : `<span>Connected ${fmtDate(n.connected_on)}</span>`;
+  return `<li class="wr${W.sel === c.k ? " on" : ""}" data-k="${esc(c.k)}">
+    <button type="button" class="wco" data-act="pick" aria-pressed="${W.sel === c.k}">${esc(c.name)}${c.follow ? '<span class="wtag">You follow</span>' : ""}</button>
+    <div class="wn"><strong>${c.people.length}</strong>${c.people.length === 1 ? "person" : "people"}</div>
+    <div class="wask"><span class="wav ${b.kind}" aria-hidden="true">${esc(init)}</span>
+      <div class="wwho">Ask <b>${esc(n.name)}</b> <span>· ${esc(n.title || "")}</span></div>
+      <div class="wwhy">${why}</div></div>
+    <div class="wmore">${others.length && !open ? `<span>Also ${esc(others.join(", "))}${c.people.length > 4 ? ` +${c.people.length - 4}` : ""}</span>` : ""}
+      <span class="acts">${c.people.length > 1 ? `<button type="button" data-act="all" aria-expanded="${open}">${open ? "Show fewer" : `See all ${c.people.length}`}</button>` : ""}<button type="button" data-act="copy">Copy ${c.people.length === 1 ? "name" : "names"}</button></span></div>
+    ${open ? `<ul class="wall">${c.people.map((p) => `<li>${esc(p.n.name)} <span>· ${esc(p.n.title || "")}${p.r.length ? " · " + esc(p.r.map((x) => x.t).join(", ")) : ""}</span></li>`).join("")}</ul>` : ""}
+  </li>`;
+}
+function waysBoard() {
+  const W = S.ways, q = $("waysQ").value.trim(), rows = W.rows.filter((c) => waysMatch(c, q));
+  const fol = rows.filter((c) => c.follow), rest = rows.filter((c) => !c.follow);
+  $("waysOut").innerHTML = (fol.length ? `<h3 class="wsect">Companies you follow<small>${fol.length}</small></h3><ol class="wboard">${fol.map(waysRow).join("")}</ol>` : "") +
+    `<h3 class="wsect">Best ways in<small>${rest.length ? `${plural(rest.length, "company", "companies")}${rest.length > W.shown ? `, top ${W.shown}` : ""}` : "none match"}</small></h3>` +
+    `<ol class="wboard">${rest.slice(0, W.shown).map(waysRow).join("")}</ol>` +
+    (rest.length > W.shown ? `<p><button type="button" class="link" data-act="more">Show ${Math.min(20, rest.length - W.shown)} more</button></p>` : "");
+}
+// What the map shows: the company you point at or picked, else the kind you filtered on, else the filter text
+function waysShow() {
+  const W = S.ways; if (!W) return;
+  const k = W.hover || W.sel, q = $("waysQ").value.trim(), c = k && W.byK.get(k);
+  let ids = null;
+  if (c) ids = c.people.map((p) => String(p.n.id));
+  else if (W.only) ids = W.rows.filter((r) => r.kinds.has(W.only)).flatMap((r) => r.people.filter((p) => W.only === "follow" || p.r.some((x) => x.k === W.only)).map((p) => String(p.n.id)));
+  else if (q) ids = W.rows.filter((r) => waysMatch(r, q)).flatMap((r) => r.people.map((p) => String(p.n.id)));
+  S.sel = ids ? new Set(ids) : null;
+  S.selCircles = ids ? new Set(ids.map((i) => grp(S.G.getNodeAttribute(i, "cluster")))) : null;
+  S.selLabel = c ? new Set([String(c.best.n.id)]) : null;
+  const circles = c ? new Set(c.people.map((p) => p.n.cluster)).size : 0;
+  $("mapCap").textContent = c ? `${c.name}: ${plural(c.people.length, "person", "people")}, ${circles === 1 ? "all in one of your circles" : `across ${circles} of your circles`}. Ask ${c.best.n.name} first.`
+    : W.only ? `${plural(ids.length, "person", "people")}: ${WAYS[W.only].toLowerCase()}.`
+    : q ? `${plural(ids.length, "person", "people")} at the companies that match.`
+    : "Each dot is someone you know. Coloured dots are ways in. Point at a company to find its people.";
+  S.renderer.refresh();
+}
+function waysPick(k, scroll) {
+  const W = S.ways; W.sel = W.sel === k ? null : k; W.hover = null;
+  if (W.sel && !W.rows.slice(0, W.shown).some((c) => c.k === k) && !W.byK.get(k).follow) { W.only = null; $("waysQ").value = W.byK.get(k).name; syncWaysStats(); }
+  waysBoard(); waysShow(); track("ways:pick");
+  if (scroll && W.sel) { const li = [...document.querySelectorAll("#waysOut .wr")].find((x) => x.dataset.k === k); if (li) li.scrollIntoView({ block: "nearest", behavior: reduceMotion.matches ? "auto" : "smooth" }); }
+}
+const syncWaysStats = () => document.querySelectorAll("#waysStats .wstat").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.k === S.ways.only)));
+$("waysStats").addEventListener("click", (e) => {
+  const b = e.target.closest(".wstat"); if (!b || !S || !S.ways) return;
+  S.ways.only = S.ways.only === b.dataset.k ? null : b.dataset.k; S.ways.sel = null; syncWaysStats(); waysBoard(); waysShow(); track("ways:" + b.dataset.k);
+});
+$("waysQ").addEventListener("input", () => { if (!S || !S.ways) return; S.ways.sel = null; waysBoard(); waysShow(); });
+const waysHover = (k) => { if (!S || !S.ways || S.ways.hover === k) return; S.ways.hover = k; waysShow(); };
+$("waysOut").addEventListener("mouseover", (e) => { const li = e.target.closest(".wr"); waysHover(li ? li.dataset.k : null); });
+$("waysOut").addEventListener("mouseleave", () => waysHover(null));
+$("waysOut").addEventListener("focusin", (e) => { const li = e.target.closest(".wr"); waysHover(li ? li.dataset.k : null); });
+$("waysOut").addEventListener("focusout", (e) => { if (!$("waysOut").contains(e.relatedTarget)) waysHover(null); });
+$("waysOut").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"), li = e.target.closest(".wr"), W = S && S.ways; if (!W) return;
+  const act = b ? b.dataset.act : li ? "pick" : null, c = li && W.byK.get(li.dataset.k);
+  if (act === "more") { W.shown += 20; waysBoard(); return; }
+  if (!c) return;
+  if (act === "pick") waysPick(c.k);
+  else if (act === "all") { W.open.has(c.k) ? W.open.delete(c.k) : W.open.add(c.k); waysBoard(); }
+  else if (act === "copy") {
+    const text = c.people.map((p) => [p.n.name, p.n.title, c.name].filter(Boolean).join(", ")).join("\n");
+    try { await navigator.clipboard.writeText(text); status(`Copied ${plural(c.people.length, "name")} at ${c.name}.`); }
+    catch (err) { status("Your browser blocked copying; use See all and select the names.", true); }
+    track("ways:copy");
+  }
+});
 // ---------- drop your own export (Pyodide, in this tab) ----------
 let pyReady = null;
 function getPyodide() {
@@ -1132,7 +1287,7 @@ applyMotionPref();
 (async () => {
   const qs = new URLSearchParams(location.search);
   let saved = null; try { saved = localStorage.getItem("nc.view"); } catch (e) { /* storage blocked */ }
-  setPage(qs.get("view") || saved || "list", false);
+  setPage(qs.get("view") || (qs.get("know") ? "list" : saved) || "ways", false);
   const shown = (d, what) => status(what ? `Showing ${what}: ${d.meta.n_people} people in ${d.meta.n_clusters} circles.` : `Showing the demo: ${d.meta.n_people} fictional people in ${d.meta.n_clusters} circles.`);
   // Static demo build (src/build_demo.py) embeds the synthetic graph; there is no drop mode there.
   if (window.DEMO_GRAPH) {

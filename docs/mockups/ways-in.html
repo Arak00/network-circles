@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Ways In mockup</title>
+<!-- Mockup only: "Your ways in" board with the circles map beside it, as the demo's first screen.
+     Reads the real demo files. ?theme=light|dark  ?pick=<company> pre-selects a row (for screenshots). -->
+<style>
+:root {
+  --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964;
+  --line: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6; --link: #266fc7; --focus: #2a78d6; --banner: #eef3fa; --sel: #fff6d6;
+  --k-warm: #19a573; --k-route: #2a78d6; --k-fresh: #c48400; --k-none: #c3c2b7;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
+  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #6da7ec; --focus: #6da7ec; --banner: #17202b; --sel: #2b2617;
+  --k-warm: #199e70; --k-route: #3987e5; --k-fresh: #c98500; --k-none: #4a4945; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
+  --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #6da7ec; --focus: #6da7ec; --banner: #17202b; --sel: #2b2617;
+  --k-warm: #199e70; --k-route: #3987e5; --k-fresh: #c98500; --k-none: #4a4945; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
+.app { max-width: 1320px; margin: 0 auto; padding: 12px 16px 40px; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+h1 { font-size: 17px; margin: 0; }
+.own { margin-left: auto; font-size: 12px; color: var(--ink-2); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 5px 11px; cursor: pointer; }
+button:hover { border-color: var(--ink-2); }
+.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.link { color: var(--link); background: none; border: none; padding: 0; text-decoration: underline; text-underline-offset: 2px; font-size: 13px; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(400px, 560px); grid-template-areas: "hero side" "board side"; gap: 16px 24px; align-items: start; }
+.hero { grid-area: hero; } .board-wrap { grid-area: board; }
+.side { grid-area: side; display: grid; gap: 12px; position: sticky; top: 12px; }
+.hero h2 { font-size: clamp(26px, 4vw, 40px); line-height: 1.1; margin: 4px 0 6px; letter-spacing: -0.01em; }
+.hero h2 b { color: var(--accent); }
+.hero p { margin: 0; font-size: 16px; color: var(--ink-2); max-width: 680px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.stat { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 0 8px; text-align: left; padding: 8px 12px; border-radius: 8px; align-items: baseline; }
+.stat i { width: 10px; height: 10px; border-radius: 50%; align-self: center; }
+.stat i.follow { background: none; border: 2px solid var(--ink); }
+.stat strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+.stat[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.filter { display: flex; gap: 8px; margin: 0 0 4px; }
+.filter input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--axis); border-radius: 8px; padding: 9px 12px; }
+.sect { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 16px 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.sect small { text-transform: none; letter-spacing: 0; color: var(--muted); }
+.board { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; cursor: pointer; }
+.row:hover, .row.on { border-color: var(--ink-2); }
+.row.on { box-shadow: inset 3px 0 0 var(--ink); }
+.co { font-size: 16px; font-weight: 650; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.tag { font-size: 11px; font-weight: 500; color: var(--ink-2); background: var(--banner); border-radius: 999px; padding: 1px 8px; }
+.n { text-align: right; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.n strong { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.ask { grid-column: 1 / -1; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 2px 10px; align-items: start; }
+.av { grid-row: span 2; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 650; color: #fff; background: var(--k-none); }
+.av.warm { background: var(--k-warm); } .av.route { background: var(--k-route); } .av.fresh { background: var(--k-fresh); }
+.who b { font-weight: 650; } .who span { color: var(--ink-2); }
+.why { display: flex; flex-wrap: wrap; gap: 4px; }
+.why span { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--ink); }
+.why .warm { border-color: var(--k-warm); } .why .route { border-color: var(--k-route); } .why .fresh { border-color: var(--k-fresh); }
+.more { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.more .acts { margin-left: auto; display: flex; gap: 6px; }
+.more button { font-size: 12px; padding: 3px 9px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 6px; display: flex; justify-content: space-between; gap: 8px; }
+.card h3 small { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
+.card p { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+#map svg { display: block; width: 100%; height: auto; max-height: min(62vh, 560px); }
+#map svg .dot { transition: opacity .2s; }
+#map svg .hit { cursor: pointer; }
+@keyframes pulse { 0% { r: 7; opacity: .9; } 100% { r: 16; opacity: 0; } }
+#map svg .pulse { animation: pulse 1.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { #map svg .pulse { animation: none; opacity: 0; } }
+#cap { min-height: 2.9em; }
+details.card summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+ol.rules { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); } ol.rules li { margin: 2px 0; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "side" "board"; }
+  .side { position: static; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .more .acts { margin-left: 0; }
+  #map svg { max-height: 360px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Network Circles</h1>
+    <div class="own"><span>Showing the demo: 300 fictional people.</span><button class="primary" type="button">Open your LinkedIn zip</button></div>
+  </header>
+
+  <div class="layout">
+    <section class="hero">
+      <h2 id="headline">You have a way into <b>…</b> companies.</h2>
+      <p id="sub"></p>
+      <div class="stats" id="stats" role="group" aria-label="Show only, on the board and the map"></div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h3>Your network <small>one disc per circle</small></h3>
+        <div id="map"></div>
+        <p id="cap"></p>
+      </div>
+      <details class="card"><summary>How the order works</summary>
+        <ol class="rules">
+          <li>Worked with you, or endorsed you: they know your work.</li>
+          <li>Recruiter or senior: they can route an intro.</li>
+          <li>Met at an event, or added this year: they'll remember you.</li>
+          <li>More people there ranks a company higher.</li>
+        </ol>
+        <p>It's a rule of thumb from your export, not a prediction. Each row says why. <span id="mine"></span></p>
+      </details>
+    </aside>
+
+    <section class="board-wrap">
+      <form class="filter" onsubmit="return false">
+        <input id="q" placeholder="Filter: a company, a role, a name… e.g. freight, recruiter" aria-label="Filter companies, roles or names">
+      </form>
+      <div id="out"></div>
+    </section>
+  </div>
+</div>
+<script>
+const qs = new URLSearchParams(location.search);
+if (qs.get("theme")) document.documentElement.dataset.theme = qs.get("theme");
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const fmtMonth = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+const KINDS = { warm: "Know your work", route: "Can route an intro", fresh: "Will remember you", follow: "At companies you follow" };
+const RANK = ["warm", "route", "fresh"];
+let D, ROWS = [], BYK = new Map(), PEOPLE = new Map(), ONLY = null, SEL = null, HOVER = null, discs = [];
+
+fetch("../../demo/graph.json").then((r) => r.json()).then((d) => {
+  D = d;
+  const L = d.layers, generic = new Set((d.meta.generic || []).map((g) => g.toLowerCase()));
+  const org = (how) => new Set(L.nodes.filter((n) => n.kind === "org" && n.how === how).map((n) => n.label.toLowerCase()));
+  const worked = org("you worked here"), followed = org("you follow it"), studied = org("you studied here");
+  const label = Object.fromEntries(L.nodes.map((n) => [n.id, n.label]));
+  const endorsed = {}, met = {};
+  for (const e of L.edges) {
+    if (e.kind === "endorsed you for" && !(e.s in endorsed)) endorsed[e.s] = label[e.t];
+    if (e.kind === "connected after") met[e.s] = label[e.t];
+  }
+  const circleCo = Object.fromEntries(d.clusters.filter((c) => c.basis !== "dates").map((c) => [c.id, (c.label || "").split(" · ")[0]]));
+  const last = d.nodes.map((n) => n.connected_on).filter(Boolean).sort().pop();
+  const monthsAgo = (s) => s ? (new Date(last) - new Date(s)) / 2.63e9 : 999;
+  const isMine = (k) => [...worked, ...studied].some((m) => m === k || m.split(" ")[0] === k.split(" ")[0] && (m.startsWith(k) || k.startsWith(m)));
+
+  for (const n of d.nodes) {  // every person: reasons (strongest first), score, and the kind of way in they are
+    const r = [], k = (n.company || "").trim().toLowerCase(), was = circleCo[n.cluster];
+    if (was && worked.has(was.toLowerCase()) && was.toLowerCase() !== k) r.push({ t: `Worked with you at ${was}`, w: 3, k: "warm" });
+    if (endorsed[n.id]) r.push({ t: `Endorsed you for ${endorsed[n.id]}`, w: 3, k: "warm" });
+    if (n.role === "recruiting/hr") r.push({ t: "Recruiter", w: 2, k: "route" });
+    if (n.role === "founder/exec") r.push({ t: "Senior", w: 2, k: "route" });
+    if (met[n.id]) r.push({ t: `Met at ${met[n.id]}`, w: 1, k: "fresh" });
+    const m = monthsAgo(n.connected_on);
+    if (m <= 12) r.push({ t: `Added ${fmtMonth(n.connected_on)}`, w: 1, k: "fresh" });
+    const door = k && !generic.has(k) && !isMine(k);
+    PEOPLE.set(n.id, { n, r, k, s: r.reduce((t, x) => t + x.w, 0) - (m > 72 ? 0.5 : 0) + Math.max(0, 1 - m / 120) * 0.5,
+      kind: door ? RANK.find((x) => r.some((y) => y.k === x)) || "none" : "mine" });
+  }
+  for (const p of PEOPLE.values()) {
+    if (p.kind === "mine" || !p.k) continue;
+    if (!BYK.has(p.k)) BYK.set(p.k, { name: p.n.company.trim(), k: p.k, people: [] });
+    BYK.get(p.k).people.push(p);
+  }
+  for (const c of BYK.values()) {
+    c.people.sort((a, b) => b.s - a.s); c.best = c.people[0];
+    c.score = c.best.s + 0.6 * Math.log2(c.people.length);
+    c.follow = followed.has(c.k);
+    c.kinds = new Set(c.people.flatMap((p) => p.r.map((x) => x.k))); if (c.follow) c.kinds.add("follow");
+  }
+  ROWS = [...BYK.values()].sort((a, b) => b.follow - a.follow || b.score - a.score);
+  const mine = d.nodes.filter((n) => PEOPLE.get(n.id).kind === "mine" && n.company).length;
+
+  $("headline").innerHTML = `You have a way into <b>${ROWS.length}</b> companies.`;
+  const warm = ROWS.filter((c) => c.kinds.has("warm")).length;
+  $("sub").textContent = `At ${warm} of them, someone already knows your work. They're at the top, with who to ask and why.`;
+  const count = (k) => ROWS.filter((c) => c.kinds.has(k)).length;
+  $("stats").innerHTML = Object.entries(KINDS).map(([k, t]) => `<button type="button" class="stat" data-k="${k}" aria-pressed="false">` +
+    `<i class="${k === "follow" ? "follow" : ""}" style="${k === "follow" ? "" : `background:var(--k-${k})`}"></i><strong>${count(k)}</strong><span>${t.replace("At companies", "Companies")}</span></button>`).join("");
+  $("stats").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; ONLY = ONLY === b.dataset.k ? null : b.dataset.k;
+    document.querySelectorAll(".stat").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.k === ONLY))); render(); };
+  $("mine").textContent = `The ${mine} people at places you worked or studied are grey on the map and left off the board; former colleagues who moved on count at their new company.`;
+  pack();
+  $("q").oninput = render;
+  $("out").addEventListener("mouseover", (e) => { const li = e.target.closest(".row"); HOVER = li ? li.dataset.k : null; drawMap(); });
+  $("out").addEventListener("mouseleave", () => { HOVER = null; drawMap(); });
+  $("out").addEventListener("click", (e) => { const li = e.target.closest(".row"); if (!li || e.target.closest("button")) return; SEL = SEL === li.dataset.k ? null : li.dataset.k; render(); });
+  $("map").addEventListener("click", (e) => { const id = e.target.dataset && e.target.dataset.id; if (id == null) return;
+    const p = PEOPLE.get(+id); if (!BYK.has(p.k)) return; SEL = p.k; ONLY = null; $("q").value = "";
+    document.querySelectorAll(".stat").forEach((x) => x.setAttribute("aria-pressed", "false")); render();
+    const li = document.querySelector(`.row[data-k="${CSS.escape(p.k)}"]`); if (li) li.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
+  SEL = qs.get("pick") ? qs.get("pick").toLowerCase() : null;
+  render();
+});
+
+// ---- packed circles (as docs/mockups/index.html): each circle a sunflower disc, discs packed around the biggest
+function pack() {
+  const C = 4, by = new Map();
+  D.nodes.forEach((n) => { if (!by.has(n.cluster)) by.set(n.cluster, []); by.get(n.cluster).push(n); });
+  discs = [...by.entries()].map(([c, ps]) => ({ c, ps, r: C * Math.sqrt(ps.length), R: C * Math.sqrt(ps.length) + (ps.length >= 4 ? 16 : 5) }))
+    .sort((a, b) => (a.c < 0) - (b.c < 0) || b.ps.length - a.ps.length);
+  const placed = [], GAP = 5, free = (x, y, R) => placed.every((p) => Math.hypot(p.x - x, p.y - y) >= p.R + R + GAP - 1e-6);
+  for (const d of discs) {
+    const cand = placed.length ? [] : [[0, 0]];
+    for (const a of placed) {
+      for (let k = 0; k < 24; k++) { const t = (k / 24) * 2 * Math.PI, r = a.R + d.R + GAP; cand.push([a.x + r * Math.cos(t), a.y + r * Math.sin(t)]); }
+      for (const b of placed) if (a !== b) {
+        const ra = a.R + d.R + GAP, rb = b.R + d.R + GAP, dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy);
+        if (l > ra + rb || l < Math.abs(ra - rb)) continue;
+        const u = (ra * ra - rb * rb + l * l) / (2 * l), h = Math.sqrt(Math.max(0, ra * ra - u * u)), mx = a.x + (u * dx) / l, my = a.y + (u * dy) / l;
+        cand.push([mx - (h * dy) / l, my + (h * dx) / l], [mx + (h * dy) / l, my - (h * dx) / l]);
+      }
+    }
+    const [x, y] = cand.filter(([x, y]) => free(x, y, d.R)).sort((p, q) => Math.hypot(p[0], p[1] * 1.3) - Math.hypot(q[0], q[1] * 1.3))[0];  // a little wider than tall
+    Object.assign(d, { x, y }); placed.push(d);
+    // strongest ways in sit in the middle of each disc, so a circle's doors read as its core
+    const order = RANK.concat(["none", "mine"]);
+    d.ps.sort((a, b) => order.indexOf(PEOPLE.get(a.id).kind) - order.indexOf(PEOPLE.get(b.id).kind) || PEOPLE.get(b.id).s - PEOPLE.get(a.id).s);
+    d.ps.forEach((n, i) => { const a = i * 2.39996, r = C * Math.sqrt(i + 0.5); n.x = d.x + r * Math.cos(a); n.y = d.y + r * Math.sin(a); });
+  }
+}
+function drawMap() {
+  const focus = HOVER || SEL, q = $("q").value.trim().toLowerCase();
+  const xs = discs.flatMap((d) => [d.x - d.R, d.x + d.R]), ys = discs.flatMap((d) => [d.y - d.R, d.y + d.R]);
+  const x0 = Math.min(...xs) - 8, x1 = Math.max(...xs) + 8, y0 = Math.min(...ys) - 8, y1 = Math.max(...ys) + 8;
+  const col = { warm: css("--k-warm"), route: css("--k-route"), fresh: css("--k-fresh"), none: css("--k-none"), mine: css("--k-none") };
+  const on = (p) => focus ? p.k === focus
+    : ONLY === "follow" ? BYK.has(p.k) && BYK.get(p.k).follow
+    : ONLY ? p.r.some((x) => x.k === ONLY) && p.kind !== "mine"
+    : q ? p.kind !== "mine" && (p.k.includes(q) || (p.n.name + " " + p.n.title).toLowerCase().includes(q)) : null;
+  const halo = `paint-order="stroke" stroke="${css("--surface")}" stroke-width="3.5" stroke-linejoin="round"`;
+  let s = `<svg viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}" role="img" aria-label="Your connections, one disc per circle, coloured by the kind of way in">`, lit = 0, top = null;
+  for (const d of discs) {
+    s += `<circle cx="${d.x}" cy="${d.y}" r="${d.R}" fill="none" stroke="${css("--line")}" ${d.c < 0 ? 'stroke-dasharray="3 3"' : ""}/>`;
+    for (const n of d.ps) {
+      const p = PEOPLE.get(n.id), o = on(p), door = p.kind !== "none" && p.kind !== "mine";
+      const op = o === null ? (door ? 1 : p.kind === "mine" ? 0.35 : 0.6) : o ? 1 : 0.12;
+      if (o) lit++;
+      s += `<circle class="dot hit" data-id="${n.id}" cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${door ? 2.9 : 2.3}" fill="${col[p.kind]}" opacity="${op}"><title>${esc(n.name)} · ${esc(n.company || "")}</title></circle>`;
+      if (focus && o) s += `<circle cx="${n.x}" cy="${n.y}" r="4.3" fill="none" stroke="${css("--ink")}" stroke-width="0.9" pointer-events="none"/>`;
+    }
+  }
+  const boxes = [];  // circle names, biggest first; one that would touch an earlier name is left out (ponytail: estimated text width)
+  discs.filter((d) => d.ps.length >= 9 && d.c >= 0).forEach((d) => {
+    const t = (D.clusters.find((x) => x.id === d.c).label || "").split(" · ")[0], w = t.length * 5.6, y = d.y - d.r - 4;
+    const box = { x: d.x - w / 2 - 3, y: y - 10, w: w + 6, h: 13 };
+    if (boxes.some((o) => box.x < o.x + o.w && o.x < box.x + box.w && box.y < o.y + o.h && o.y < box.y + box.h)) return;
+    boxes.push(box);
+    s += `<text x="${d.x}" y="${y}" text-anchor="middle" font-size="10.5" fill="${css("--ink-2")}" opacity="${focus ? 0.5 : 1}" ${halo}>${esc(t)}</text>`;
+  });
+  if (focus && BYK.has(focus)) {  // the person to ask: pulse + name
+    const b = BYK.get(focus).best.n, nb = D.nodes.find((n) => n.id === b.id);
+    top = b;
+    s += `<circle class="pulse" cx="${nb.x}" cy="${nb.y}" r="7" fill="none" stroke="${css("--ink")}" stroke-width="1.5" pointer-events="none"/>`;
+    s += `<circle cx="${nb.x}" cy="${nb.y}" r="6.5" fill="none" stroke="${css("--ink")}" stroke-width="2.2" pointer-events="none"/>`;
+    const right = nb.x < (x0 + x1) / 2;
+    s += `<text x="${nb.x + (right ? 10 : -10)}" y="${nb.y - 8}" text-anchor="${right ? "start" : "end"}" font-size="12.5" font-weight="650" fill="${css("--ink")}" ${halo}>Ask ${esc(b.name)}</text>`;
+  }
+  $("map").innerHTML = s + "</svg>";
+  const c = focus && BYK.get(focus);
+  $("cap").innerHTML = c ? `<b>${esc(c.name)}</b>: ${c.people.length} ${c.people.length === 1 ? "person" : "people"}, ${((k) => k === 1 ? "all in one of your circles" : `spread over ${k} of your circles`)(new Set(c.people.map((p) => p.n.cluster)).size)}. Ask ${esc(top.name)} first.`
+    : ONLY ? `${lit} people ${KINDS[ONLY].toLowerCase()}.`
+    : q ? `${lit} people match “${esc(q)}”.`
+    : "Each dot is someone you know. <b>Coloured dots are ways in</b>; grey ones are at places you worked, or have no reason yet. Point at a company to find its people.";
+}
+function rowHTML(c) {
+  const b = c.best, n = b.n, init = n.name.split(" ").map((w) => w[0]).slice(0, 2).join("");
+  const others = c.people.slice(1, 4).map((p) => p.n.name.split(" ")[0] + " " + p.n.name.split(" ")[1][0] + ".");
+  const why = b.r.length ? b.r.map((x) => `<span class="${x.k}">${esc(x.t)}</span>`).join("") : `<span>Connected ${fmtMonth(n.connected_on)}</span>`;
+  return `<li class="row${SEL === c.k ? " on" : ""}" data-k="${esc(c.k)}">
+    <div class="co">${esc(c.name)}${c.follow ? '<span class="tag">You follow</span>' : ""}</div>
+    <div class="n"><strong>${c.people.length}</strong>${c.people.length === 1 ? "person" : "people"}</div>
+    <div class="ask"><span class="av ${b.kind}" aria-hidden="true">${esc(init)}</span>
+      <div class="who">Ask <b>${esc(n.name)}</b> <span>· ${esc(n.title)}</span></div>
+      <div class="why">${why}</div></div>
+    <div class="more">${others.length ? `<span>Also ${esc(others.join(", "))}${c.people.length > 4 ? ` +${c.people.length - 4}` : ""}</span>` : ""}
+      <span class="acts"><button type="button">See all ${c.people.length}</button><button type="button">Copy names</button></span></div>
+  </li>`;
+}
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const hit = (c) => (!ONLY || c.kinds.has(ONLY)) && (!q || c.k.includes(q) || c.people.some((p) => (p.n.name + " " + p.n.title + " " + p.n.role).toLowerCase().includes(q)));
+  const rows = ROWS.filter(hit), fol = rows.filter((c) => c.follow), rest = rows.filter((c) => !c.follow), SHOW = 10;
+  $("out").innerHTML = (fol.length ? `<div class="sect">Companies you follow <small>${fol.length}</small></div><ol class="board">${fol.map(rowHTML).join("")}</ol>` : "") +
+    `<div class="sect">Best ways in <small>${rest.length} companies${rest.length > SHOW ? `, top ${SHOW}` : ""}</small></div><ol class="board">${rest.slice(0, SHOW).map(rowHTML).join("")}</ol>` +
+    (rest.length > SHOW ? `<p><button class="link" type="button">Show ${rest.length - SHOW} more</button></p>` : "");
+  drawMap();
+}
+</script>
+</body>
+</html>

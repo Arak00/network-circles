@@ -67,7 +67,11 @@ def run(browser, base, label, files, fails, requests, expect_error=None):
     got = page.evaluate("({ n: window.__netmap && window.__netmap.sel ? window.__netmap.sel.size : 0, q: document.getElementById('knowQ').value })")
     if got["q"] != QUERY or got["n"] < 1:
         fails.append(f"{label}: the carried-over search did not run on the new data: {got}, status {status_text!r}")
-    print(f"{label}: {secs} s from picking files to results; {got['n']} people found for {QUERY!r}")
+    page.click("#pageView [data-view=ways]")  # the ranked board is built from the visitor's own files too
+    ways = page.evaluate("({ rows: document.querySelectorAll('#waysOut .wr').length, title: document.getElementById('waysTitle').textContent })")
+    if not ways["rows"] or "way into" not in ways["title"]:
+        fails.append(f"{label}: Ways in shows nothing for the visitor's own files: {ways}")
+    print(f"{label}: {secs} s from picking files to results; {got['n']} people found for {QUERY!r}; Ways in: {ways['title']}")
     page.close()
     return got["n"]
 

@@ -148,6 +148,26 @@ def check_page(page, errors, case, width, theme, fails, crossings):
                 fails.append(f"{case}/{width}/{theme}/{view}: results hidden while a person is pinned")
             page.keyboard.press("Escape")
         page.click("#pageView [data-view=list]"); page.click("#knowClear")
+    # Ways in: companies ranked by who could get you in; pointing at one lights its people and names who to ask
+    page.click("#pageView [data-view=ways]"); state("ways")
+    w = page.evaluate("""() => { const W = window.__netmap.ways; return { rows: document.querySelectorAll('#waysOut .wr').length, total: W.rows.length,
+        title: document.getElementById('waysTitle').textContent, mine: W.rows.filter((c) => c.people.some((p) => p.kind === 'mine')).length }; }""")
+    where = f"{case}/{width}/{theme}/ways"
+    if w["total"] and not w["rows"]:
+        fails.append(f"{where}: {w['total']} companies but the board is empty")
+    if not re.match(r"You have a way into \d+ compan", w["title"]):
+        fails.append(f"{where}: headline {w['title']!r}")
+    if w["mine"]:
+        fails.append(f"{where}: {w['mine']} rows hold people at places you worked")
+    if w["rows"]:
+        page.hover("#waysOut .wr >> nth=0"); m = state("ways+row")
+        got = page.evaluate("() => { const S = window.__netmap, c = S.ways.byK.get(S.ways.hover); return { sel: S.sel ? S.sel.size : 0, want: c ? c.people.length : -1 }; }")
+        if got["sel"] != got["want"] or got["want"] < 1:
+            fails.append(f"{where}: pointing at a company should light its people on the map: {got}")
+        if not any(b["label"].startswith("Ask ") for b in m["boxes"]):
+            fails.append(f"{where}: the person to ask isn't named on the map")
+        page.mouse.move(0, 0)
+    page.click("#pageView [data-view=list]")
     if errors:
         fails.append(f"{case}/{width}/{theme}: console errors {errors[:2]}")
 
@@ -223,7 +243,7 @@ def main(argv):
                     page.on("console", lambda m: m.type == "error" and errors.append(m.text))
                     page.on("pageerror", lambda e: errors.append(str(e)))
                     t0 = time.time()
-                    page.goto(f"{base}/web/?data=../tests/out/{case}/graph.json")
+                    page.goto(f"{base}/web/?data=../tests/out/{case}/graph.json&view=list")
                     page.wait_for_function("window.__netmap && window.__netmap.renderer", timeout=120000)
                     load[case] = max(load.get(case, 0), round(time.time() - t0, 1))
                     check_page(page, errors, case, width, theme, fails, crossings)
@@ -232,6 +252,8 @@ def main(argv):
                         know(page, fails)
                     if "--axe" in argv and case == "demo":
                         axe(page, f"{width}/{theme}", fails, axe_summary)
+                        page.click("#pageView [data-view=ways]"); page.evaluate(FRAME)
+                        axe(page, f"ways/{width}/{theme}", fails, axe_summary)
                     ctx.close()
             print(f"{case}: done, {len(fails)} failures so far", flush=True)
         browser.close()

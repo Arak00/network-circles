@@ -6,23 +6,23 @@
 <title>Network Circles</title>
 <link rel="icon" href="data:,">
 <style>
-/* Three layouts of the same parts, picked by the visitor (main[data-view]): list first, map with a search rail,
-   circles as cards. Same order on phones for all three: search first. */
+/* Four layouts of the same parts, picked by the visitor (main[data-view]): ways in first (a ranked board of companies
+   beside the map), list, map with a search rail, circles as cards. */
 :root {
   --bg: #f6f6f3; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6b6964;
   --line: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6; --link: #266fc7; --focus: #2a78d6;
   --edge: #e6e5df; --err: #c0392f; --bar: #c3c2b7; --banner: #eef3fa; --sel: #fff6d6;
-  --small: #8a887f; --unplaced: #c3c2b7; --layer: #2b2a27; --layer-edge: #cfcec6; --dim: #e9e8e3; --edge-focus: #8a887f;
+  --small: #8a887f; --unplaced: #c3c2b7; --k-warm: #19a573; --k-route: #2a78d6; --k-fresh: #c48400; --k-none: #c3c2b7; --layer: #2b2a27; --layer-edge: #cfcec6; --dim: #e9e8e3; --edge-focus: #8a887f;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
   --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec; --sel: #2b2617;
-  --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark } }
+  --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --k-warm: #199e70; --k-route: #3987e5; --k-fresh: #c98500; --k-none: #4a4945; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0f0f0e; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #9a988f;
   --line: #2c2c2a; --axis: #383835; --accent: #3987e5; --link: #3987e5; --focus: #6da7ec; --sel: #2b2617;
-  --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark }
+  --edge: #2a2a28; --err: #e66767; --bar: #4a4945; --banner: #17202b; --small: #858379; --unplaced: #55544f; --k-warm: #199e70; --k-route: #3987e5; --k-fresh: #c98500; --k-none: #4a4945; --layer: #e4e2dc; --layer-edge: #45443f; --dim: #262624; --edge-focus: #858379; color-scheme: dark }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
 .app { display: grid; gap: 12px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
@@ -147,6 +147,48 @@ details.trust summary { cursor: pointer; color: var(--muted); }
 /* dialog */
 dialog { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px;
   background: var(--surface); color: var(--ink); box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+/* ways in: ranked companies beside the map; the map's dots take the colour of the kind of way in */
+#waysHead { grid-area: head; } #waysBoard { grid-area: board; }
+main:not([data-view="ways"]) #waysHead, main:not([data-view="ways"]) #waysBoard { display: none; }
+main[data-view="ways"] { grid-template-columns: minmax(0, 1fr) minmax(360px, 540px); max-width: 1320px; grid-template-areas: "head map" "board map"; grid-template-rows: auto 1fr; }
+main[data-view="ways"] #searchCard, main[data-view="ways"] #resultsCard, main[data-view="ways"] #circlesCard, main[data-view="ways"] #timeCard, main[data-view="ways"] #viewSwitch { display: none; }
+main[data-view="ways"] #mapCard { position: sticky; top: 12px; }
+main[data-view="ways"] #graph { height: min(64vh, 560px); }
+.ways-h { font-size: clamp(26px, 3.6vw, 38px); line-height: 1.1; margin: 4px 0 6px; letter-spacing: -0.01em; text-transform: none; color: var(--ink); }
+.ways-h b { color: var(--link); }
+.ways-sub { margin: 0; font-size: 15px; color: var(--ink-2); max-width: 680px; }
+.wstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.wstat { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 0 8px; text-align: left; padding: 8px 12px; border-radius: 8px; align-items: baseline; }
+.wstat i { width: 10px; height: 10px; border-radius: 50%; align-self: center; }
+.wstat i.follow { border: 2px solid var(--ink); }
+.wstat strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.wstat span { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+.wstat[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+#waysQ { width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--axis); border-radius: 8px; padding: 9px 12px; }
+.wsect { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 16px 0 8px; }
+.wsect small { text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 6px; }
+.wboard { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wr { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; }
+.wr:hover, .wr.on { border-color: var(--ink-2); }
+.wr.on { box-shadow: inset 3px 0 0 var(--ink); }
+.wco { font-size: 16px; font-weight: 650; background: none; border: none; padding: 0; text-align: left; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.wtag { font-size: 11px; font-weight: 500; color: var(--ink-2); background: var(--banner); border-radius: 999px; padding: 1px 8px; }
+.wn { text-align: right; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.wn strong { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.wask { grid-column: 1 / -1; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 2px 10px; align-items: start; }
+.wav { grid-row: span 2; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 650; border: 2.5px solid var(--k-none); }
+.wav.warm { border-color: var(--k-warm); } .wav.route { border-color: var(--k-route); } .wav.fresh { border-color: var(--k-fresh); }
+.wwho b { font-weight: 650; } .wwho span { color: var(--ink-2); }
+.wwhy { display: flex; flex-wrap: wrap; gap: 4px; }
+.wwhy span { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.wwhy .warm { border-color: var(--k-warm); } .wwhy .route { border-color: var(--k-route); } .wwhy .fresh { border-color: var(--k-fresh); }
+.wmore { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.wmore .acts { margin-left: auto; display: flex; gap: 6px; }
+.wmore button { font-size: 12px; padding: 3px 9px; }
+.wall { grid-column: 1 / -1; list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--line); display: grid; gap: 4px; font-size: 13px; }
+.wall span { color: var(--ink-2); }
+#waysBoard .trust { margin-top: 14px; }
+#waysBoard ol.rules { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; }
 dialog::backdrop { background: rgba(0,0,0,.35); }
 dialog h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0 0 10px; }
 dialog h3 { font-size: 13px; margin: 14px 0 4px; }
@@ -157,6 +199,11 @@ dialog .row { display: flex; justify-content: flex-end; margin-top: 16px; }
   main[data-view="list"] { grid-template-areas: "search" "results" "map" "circles" "time"; }
   main[data-view="map"] { grid-template-areas: "search" "map" "results" "circles" "time"; }
   main[data-view="circles"] { grid-template-areas: "search" "results" "circles" "time"; }
+  main[data-view="ways"] { grid-template-areas: "head" "map" "board"; }
+  main[data-view="ways"] #mapCard { position: static; }
+  main[data-view="ways"] #graph { height: 46vh; }
+  .wstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wmore .acts { margin-left: 0; }
   main[data-view] #graph { height: 58vh; }
   main[data-view="map"] #resultsCard { max-height: none; overflow: visible; }
   #drop { margin-left: 0; }
@@ -173,7 +220,8 @@ dialog .row { display: flex; justify-content: flex-end; margin-top: 16px; }
   <header>
     <h1>Network Circles</h1>
     <div class="seg" id="pageView" role="group" aria-label="Layout">
-      <button type="button" data-view="list" aria-pressed="true">List</button>
+      <button type="button" data-view="ways" aria-pressed="true">Ways in</button>
+      <button type="button" data-view="list" aria-pressed="false">List</button>
       <button type="button" data-view="map" aria-pressed="false">Map</button>
       <button type="button" data-view="circles" aria-pressed="false">Circles</button>
     </div>
@@ -203,11 +251,29 @@ dialog .row { display: flex; justify-content: flex-end; margin-top: 16px; }
       <li>Type companies, roles, names, skills or events in the search box, separated by commas. <a href="../who/">More about it</a>.</li>
       <li>Click a person to see their circle and what they're linked to. Click a circle to list everyone in it.</li>
       <li>A <b>circle</b> is a group of people who share an employer or joined your network in the same few days. Generic employers such as "Freelance" don't count.</li>
-      <li><b>List</b>, <b>Map</b> and <b>Circles</b> at the top are three layouts of the same thing. <b>Layers</b> on the map lines up your skills, organisations, events and groups next to your circles.</li>
+      <li><b>Ways in</b> ranks the companies where you know someone, with who to ask and why. <b>List</b>, <b>Map</b> and <b>Circles</b> are other layouts of the same thing. <b>Layers</b> on the map lines up your skills, organisations, events and groups next to your circles.</li>
     </ul>
     <form method="dialog" class="row"><button class="primary">Got it</button></form>
   </dialog>
-  <main id="main" data-view="list">
+  <main id="main" data-view="ways">
+    <section id="waysHead" aria-labelledby="waysTitle">
+      <h2 class="ways-h" id="waysTitle">Finding your ways in…</h2>
+      <p class="ways-sub" id="waysSub"></p>
+      <div class="wstats" id="waysStats" role="group" aria-label="Show only, on the board and the map"></div>
+    </section>
+    <section id="waysBoard" aria-label="Companies where you know someone, best way in first">
+      <input id="waysQ" type="search" autocomplete="off" placeholder="Filter: a company, a role, a name… e.g. freight, recruiter" aria-label="Filter the companies by company, role or name">
+      <div id="waysOut"></div>
+      <details class="trust"><summary>How the order works</summary>
+        <ol class="rules">
+          <li>Worked with you, or endorsed you: they know your work.</li>
+          <li>Recruiter or senior: they can route an intro.</li>
+          <li>Met at an event, or added in the last year: they'll remember you.</li>
+          <li>More people at a company ranks it higher.</li>
+        </ol>
+        <p class="hint" id="waysNote"></p>
+      </details>
+    </section>
     <section class="card" id="searchCard">
       <h2 class="ask" id="askTitle">Who do you know at a company, or in a role?</h2>
       <form id="knowForm" role="search" aria-labelledby="askTitle">
