@@ -327,7 +327,7 @@ def testers_section():
     out = {"n": len(rows), "n_comments": sum(1 for r in rows if (r.get("comment") or "").strip()),
            "note": "Self-reported 1-5 scores from testers who ran the tool on their own export. Counts and medians "
                    "only; too few people for statistics. Comments are kept out of this public file."}
-    for q in ("q1", "q2", "q3"):
+    for q in ("q1a", "q1b", "q2", "q3"):  # q1a company circles, q1b added-around-the-same-time circles
         v = [int(r[q]) for r in rows if (r.get(q) or "").strip().isdigit()]
         out[q] = {"n": len(v), "median": statistics.median(v) if v else None,
                   "counts": {str(k): v.count(k) for k in range(1, 6)}}

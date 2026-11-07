@@ -241,15 +241,17 @@ def project(df, weights=None):
         for a in affs:
             if W.get(a.split(":", 1)[0], 0) > 0:
                 groups[a].append(i)
-    acc = defaultdict(float)
+    acc, co = defaultdict(float), defaultdict(float)  # co: the part of each weight that comes from a shared company
     for a, m in groups.items():
         t = a.split(":", 1)[0]
         w = W[t] / (math.log2(len(m) + 1) if t in SCALED else 1.0)
         for x in range(len(m)):
             for y in range(x + 1, len(m)):
                 acc[(m[x], m[y])] += w
+                if t in ("co", "ego"):
+                    co[(m[x], m[y])] += w
     edges = sorted(acc)
-    return ig.Graph(n=len(df), edges=edges, edge_attrs={"weight": [acc[e] for e in edges]})
+    return ig.Graph(n=len(df), edges=edges, edge_attrs={"weight": [acc[e] for e in edges], "co": [co[e] for e in edges]})
 
 
 def build(input_dir, weights=None, cutoff=0.88):
@@ -293,13 +295,21 @@ def resample_ari(input_dir, frac=0.9, runs=10, seed=0):
 
 
 # ---------- 6. output ----------
+def basis(company_share):
+    """What holds a circle together, so testers can say which kind of circle is wrong without sharing their export.
+    ponytail: fixed 0.8 / 0.2 cut-offs, first guess; tune once testers flag circles."""
+    return "company" if company_share >= 0.8 else "dates" if company_share <= 0.2 else "both"
+
+
 def summarise(df, g, memb):
-    internal, incident = Counter(), Counter()
+    internal, incident, internal_co = Counter(), Counter(), Counter()
+    has_co = "co" in g.es.attributes()
     for e in g.es:
         a, b = memb[e.source], memb[e.target]
         incident[a] += e["weight"]
         if a == b:
             internal[a] += e["weight"]
+            internal_co[a] += e["co"] if has_co else 0
         else:
             incident[b] += e["weight"]
     out = []
@@ -310,10 +320,17 @@ def summarise(df, g, memb):
             continue
         cos = Counter(df["company"].iloc[i] for i in idx if not is_generic(df["company"].iloc[i]))
         roles = Counter(df["role"].iloc[i] for i in idx if df["role"].iloc[i] != "other")
-        parts = [cos.most_common(1)[0][0]] if cos else []
+        share = round(internal_co[c] / internal[c], 3) if internal[c] else 0.0
+        b = basis(share)
+        if b == "dates":  # held together by when you connected, so a company name would mislead
+            months = Counter(d.strftime("%b %Y") for d in (df["connected_on"].iloc[i] for i in idx) if d is not None)
+            parts = [f"Added {months.most_common(1)[0][0]}"] if months else []
+        else:
+            parts = [cos.most_common(1)[0][0]] if cos else []
         parts += [roles.most_common(1)[0][0]] if roles else []
         out.append({"id": c, "size": len(idx), "label": " · ".join(parts) or f"cluster {c}",
-                    "cohesion": round(internal[c] / incident[c], 3) if incident[c] else None})
+                    "cohesion": round(internal[c] / incident[c], 3) if incident[c] else None,
+                    "basis": b, "company_share": share})
     return out
 
 
@@ -563,6 +580,13 @@ def selftest():
     assert {(post, "topic:#forecasting", "tagged"), (post, "skill:python", "mentions")} <= E, "post -> topic, skill"
     assert ("group:forecasting guild", "topic:#forecasting", "about") in E and ("group:quiet club", "you", "yours") in E
     assert any_date("Thu Jan 05 10:00:00 UTC 2023").isoformat() == "2023-01-05" and any_date("Oct 12, 2025, 9:00 AM").day == 12
+    # circle basis: 4 people at 4 companies added the same week vs 3 colleagues -> "dates" (named by month) and "company"
+    bd = pd.DataFrame({"company": ["Aa", "Bb", "Cc", "Dd", "Ee", "Ee", "Ee"], "role": ["other"] * 7,
+                       "connected_on": [datetime(2024, 3, k) for k in (1, 2, 3, 4)] + [datetime(2020, 1, 1)] * 3})
+    bg = ig.Graph(n=7, edges=[(0, 1), (1, 2), (2, 3), (0, 3), (4, 5), (5, 6)], edge_attrs={"weight": [1.0] * 6, "co": [0, 0, 0, 0, 1, 1]})
+    bs = {c["id"]: c for c in summarise(bd, bg, [0, 0, 0, 0, 1, 1, 1])}
+    assert (bs[0]["basis"], bs[0]["label"], bs[1]["basis"], bs[1]["label"]) == ("dates", "Added Mar 2024", "company", "Ee"), bs
+    assert basis(0.5) == "both" and all(c["basis"] in ("company", "dates", "both") for c in out["clusters"] if c["id"] >= 0)
     demo = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo", "data")
     rs = resample_ari(demo, frac=0.9, runs=5)  # synthetic demo; measured mean 0.92 over 10 runs
     assert sum(rs) / len(rs) >= 0.8, ("circles unstable when 10% of connections are dropped", rs)

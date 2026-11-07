@@ -54,6 +54,8 @@ const fmtDate = (d) => (d ? `${+d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]} ${d.s
 function prng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const labelOf = (c) => (c.id < 0 ? "Not in a circle" : c.label || `Circle ${c.id}`);  // one display label everywhere
+// what holds a circle together (netmap.basis), so a wrong circle can be reported by its kind without sharing the export
+const BASIS = { company: "Same company", dates: "Added around the same time", both: "Company and timing" };
 const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 function status(msg, err) { $("status").textContent = msg; $("status").className = err ? "err" : ""; }
 // A/B hook: every event worth comparing between the three layouts goes through here. Nothing is sent anywhere today;
@@ -844,6 +846,7 @@ function buildLegend() {
     if (pinC === c.id || S.listed === c.id) li.className = "on";
     const lbl = document.createElement("span"), sub = document.createElement("span"), num = document.createElement("span");
     lbl.className = "lbl"; lbl.textContent = labelOf(c); num.className = "num"; num.textContent = c.size;
+    if (BASIS[c.basis]) { const t = document.createElement("small"); t.className = "basis"; t.textContent = BASIS[c.basis]; lbl.append(t); }
     if (cards) {
       const ds = members.map((n) => n.connected_on).filter(Boolean), co = {};
       members.forEach((n) => { if (n.company) co[n.company] = (co[n.company] || 0) + 1; });
@@ -894,6 +897,7 @@ function buildMeta() {
     m.modularity == null ? null : `Modularity ${m.modularity}. Company groups separate easily, so a high value is expected and is not proof the circles are right.`,
     coh ? `Cohesion, the share of a circle's link weight that stays inside it: ${coh}.` : null,
     "The export has no links between your connections. Circles are inferred from shared employers and timing.",
+    S.data.clusters.some((c) => c.basis) ? `Each circle says what holds it together: "${BASIS.company}" when at least 80% of its link weight is shared employers, "${BASIS.dates}" when at least 80% is people you added within a few days of each other, "${BASIS.both}" otherwise.` : null,
     layerNote(S.data.layers),
   ];
   $("meta").innerHTML = ""; lines.filter(Boolean).forEach((t) => { const li = document.createElement("li"); li.textContent = t; $("meta").appendChild(li); });
